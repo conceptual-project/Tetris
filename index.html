@@ -364,14 +364,12 @@
                 <button class="lang-btn" id="langBtn">EN</button>
             </div>
         </div>
-
         <script>
             const COLS = 10,
                 ROWS = 20,
                 CELL = 28,
                 BW = COLS * CELL,
                 BH = ROWS * CELL;
-
             const COLORS = {
                 I: {
                     base: "#a8d8ea",
@@ -423,7 +421,6 @@
                     glow: [240, 208, 176],
                 },
             };
-
             const PIXEL_MAPS = {
                 Т: [
                     [1, 1, 1, 1, 1],
@@ -496,7 +493,6 @@
                     [1, 1, 1, 1, 0],
                 ],
             };
-
             const TITLE_PIECE_COLORS = [
                 COLORS.T,
                 COLORS.S,
@@ -505,7 +501,6 @@
                 COLORS.L,
                 COLORS.O,
             ];
-
             const SHAPES = {
                 I: [
                     [
@@ -662,7 +657,6 @@
                     ],
                 ],
             };
-
             const PIECE_TYPES = ["I", "O", "T", "S", "Z", "J", "L"],
                 LINE_SCORES = [0, 40, 100, 300, 1200],
                 PERFECT_CLEAR_BONUS = 2000;
@@ -673,7 +667,6 @@
             const LOCK_DELAY = 500,
                 MAX_LOCK_RESETS = 15,
                 CLEAR_DURATION = 175;
-
             const LOC = {
                 title: { ru: "ТЕТРИС", en: "TETRIS" },
                 play: { ru: "ИГРАТЬ", en: "PLAY" },
@@ -713,14 +706,12 @@
                 lbDate: { ru: "Дата", en: "Date" },
                 gamepad: { ru: "Геймпад подключён", en: "Gamepad connected" },
             };
-
             function t(key) {
                 return LOC[key]?.[G.lang] || LOC[key]?.ru || key;
             }
             function getLoc() {
                 return G.lang === "ru" ? "ru-RU" : "en-US";
             }
-
             const SRS_JLSTZ = {
                 "0_1": [
                     [0, 0],
@@ -781,7 +772,6 @@
                     [-2, 1],
                 ],
             };
-
             function createEmptyBoard() {
                 return Array.from({ length: ROWS }, () =>
                     Array(COLS).fill(null),
@@ -864,6 +854,13 @@
                     const kp = { ...rp, x: rp.x + kx, y: rp.y + ky };
                     if (isValid(b, kp)) return kp;
                 }
+                // Senior Dev Fix: Floor Kick для I-фигуры
+                if (p.type === "I") {
+                    for (const ky of [-1, -2]) {
+                        const kp = { ...rp, x: rp.x, y: rp.y + ky };
+                        if (isValid(b, kp)) return kp;
+                    }
+                }
                 return null;
             }
             function ghostY(b, p) {
@@ -874,7 +871,6 @@
             function onGround(b, p) {
                 return !isValid(b, { ...p, y: p.y + 1 });
             }
-
             let G = {
                 board: createEmptyBoard(),
                 currentPiece: null,
@@ -912,7 +908,6 @@
                 const s = localStorage.getItem("tetris_lang");
                 if (s === "en" || s === "ru") G.lang = s;
             } catch (e) {}
-
             const LB_KEY = "tetris_leaderboard";
             function loadLeaderboard() {
                 try {
@@ -947,7 +942,6 @@
                     highlightIdx: lb.findIndex((e) => e === entry),
                 };
             }
-
             const boardCanvas = document.getElementById("boardCanvas"),
                 nextCanvas = document.getElementById("nextCanvas"),
                 titleRow = document.getElementById("titleRow");
@@ -958,12 +952,10 @@
                 startBtn = document.getElementById("startBtn"),
                 restartBtn = document.getElementById("restartBtn"),
                 gpIndicator = document.getElementById("gpIndicator");
-
             let gl = null,
                 GL = null;
             boardCanvas.width = BW;
             boardCanvas.height = BH;
-
             function initWebGL() {
                 gl = boardCanvas.getContext("webgl2", {
                     alpha: false,
@@ -971,13 +963,18 @@
                     premultipliedAlpha: false,
                 });
                 if (!gl) return;
-                const BG_VS = `#version 300 es\nlayout(location=0) in vec2 a_pos; out vec2 v_uv; void main(){ gl_Position=vec4(a_pos,0,1); v_uv=a_pos*0.5+0.5; }`;
-                const BG_FS = `#version 300 es\nprecision mediump float; in vec2 v_uv; uniform sampler2D u_tex; out vec4 fc; void main(){ fc=texture(u_tex,v_uv); }`;
-                const CELL_VS = `#version 300 es\nlayout(location=0) in vec2 a_pos; layout(location=1) in vec2 a_off; layout(location=2) in float a_sz; layout(location=3) in vec4 a_uv; layout(location=4) in float a_alpha; uniform vec2 u_res; out vec2 v_uv; out float v_a; void main(){ vec2 px=a_off+a_pos*a_sz; vec2 cp=(px/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); v_uv=a_uv.xy+a_pos*a_uv.zw; v_a=a_alpha; }`;
-                const CELL_FS = `#version 300 es\nprecision mediump float; in vec2 v_uv; in float v_a; uniform sampler2D u_tex; out vec4 fc; void main(){ vec4 t=texture(u_tex,v_uv); fc=vec4(t.rgb,t.a*v_a); }`;
-                const PART_VS = `#version 300 es\nlayout(location=0) in vec2 a_pos; layout(location=1) in float a_sz; layout(location=2) in vec4 a_col; uniform vec2 u_res; out vec4 v_col; void main(){ vec2 cp=(a_pos/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); gl_PointSize=a_sz*2.0; v_col=a_col; }`;
-                const PART_FS = `#version 300 es\nprecision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5)discard; float a=v_col.a*smoothstep(0.5,0.05,d); fc=vec4(v_col.rgb,a); }`;
-
+                const BG_VS = `#version 300 es
+layout(location=0) in vec2 a_pos; out vec2 v_uv; void main(){ gl_Position=vec4(a_pos,0,1); v_uv=a_pos*0.5+0.5; }`;
+                const BG_FS = `#version 300 es
+precision mediump float; in vec2 v_uv; uniform sampler2D u_tex; out vec4 fc; void main(){ fc=texture(u_tex,v_uv); }`;
+                const CELL_VS = `#version 300 es
+layout(location=0) in vec2 a_pos; layout(location=1) in vec2 a_off; layout(location=2) in float a_sz; layout(location=3) in vec4 a_uv; layout(location=4) in float a_alpha; uniform vec2 u_res; out vec2 v_uv; out float v_a; void main(){ vec2 px=a_off+a_pos*a_sz; vec2 cp=(px/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); v_uv=a_uv.xy+a_pos*a_uv.zw; v_a=a_alpha; }`;
+                const CELL_FS = `#version 300 es
+precision mediump float; in vec2 v_uv; in float v_a; uniform sampler2D u_tex; out vec4 fc; void main(){ vec4 t=texture(u_tex,v_uv); fc=vec4(t.rgb,t.a*v_a); }`;
+                const PART_VS = `#version 300 es
+layout(location=0) in vec2 a_pos; layout(location=1) in float a_sz; layout(location=2) in vec4 a_col; uniform vec2 u_res; out vec4 v_col; void main(){ vec2 cp=(a_pos/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); gl_PointSize=a_sz*2.0; v_col=a_col; }`;
+                const PART_FS = `#version 300 es
+precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5)discard; float a=v_col.a*smoothstep(0.5,0.05,d); fc=vec4(v_col.rgb,a); }`;
                 function compileShader(src, type) {
                     const s = gl.createShader(type);
                     gl.shaderSource(s, src);
@@ -995,7 +992,6 @@
                     gl.deleteShader(fShader);
                     return p;
                 }
-
                 const bgProg = createProgram(BG_VS, BG_FS),
                     cellProg = createProgram(CELL_VS, CELL_FS),
                     partProg = createProgram(PART_VS, PART_FS);
@@ -1011,7 +1007,6 @@
                 const partA_pos = gl.getAttribLocation(partProg, "a_pos"),
                     partA_sz = gl.getAttribLocation(partProg, "a_sz"),
                     partA_col = gl.getAttribLocation(partProg, "a_col");
-
                 function roundRect(ctx, x, y, w, h, radii) {
                     let tl, tr, br, bl;
                     if (Array.isArray(radii)) {
@@ -1122,7 +1117,6 @@
                     ctx.globalAlpha = 1;
                     ctx.restore();
                 }
-
                 const atlasCanvas = document.createElement("canvas");
                 atlasCanvas.width = 7 * CELL;
                 atlasCanvas.height = 3 * CELL;
@@ -1167,7 +1161,6 @@
                         ],
                     };
                 });
-
                 const bgCanvas = document.createElement("canvas");
                 bgCanvas.width = BW;
                 bgCanvas.height = BH;
@@ -1194,7 +1187,6 @@
                 bgCtx.strokeStyle = "rgba(255,255,255,0.1)";
                 bgCtx.lineWidth = 2;
                 bgCtx.strokeRect(0, 0, BW, BH);
-
                 function createTex(canvas) {
                     const tex = gl.createTexture();
                     gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -1225,7 +1217,6 @@
                 }
                 const bgTex = createTex(bgCanvas),
                     atlasTex = createTex(atlasCanvas);
-
                 const bgVao = gl.createVertexArray(),
                     bgBuf = gl.createBuffer();
                 gl.bindVertexArray(bgVao);
@@ -1250,7 +1241,6 @@
                 gl.enableVertexAttribArray(cellA_pos);
                 gl.vertexAttribPointer(cellA_pos, 2, gl.FLOAT, false, 0, 0);
                 gl.bindVertexArray(null);
-
                 const cellInstBuf = gl.createBuffer(),
                     cellInstArr = new Float32Array(250 * 8);
                 gl.bindBuffer(gl.ARRAY_BUFFER, cellInstBuf);
@@ -1262,7 +1252,6 @@
                 const partBuf = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, partBuf);
                 gl.bufferData(gl.ARRAY_BUFFER, 600 * 7 * 4, gl.DYNAMIC_DRAW);
-
                 GL = {
                     bgProg,
                     cellProg,
@@ -1291,7 +1280,6 @@
                     cellUVTable,
                 };
             }
-
             function render() {
                 if (!gl || !GL) return;
                 gl.viewport(0, 0, BW, BH);
@@ -1305,7 +1293,6 @@
                 gl.bindVertexArray(GL.bgVao);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 gl.bindVertexArray(null);
-
                 let instIdx = 0;
                 const cellInst = GL.cellInstArr;
                 const nowMs = performance.now();
@@ -1315,7 +1302,6 @@
                         (nowMs - G.removingStart) / CLEAR_DURATION,
                         1,
                     );
-
                 for (let r = 0; r < ROWS; r++)
                     for (let c = 0; c < COLS; c++) {
                         if (instIdx >= 250) break;
@@ -1350,7 +1336,6 @@
                             }
                         }
                     }
-
                 if (G.currentPiece && instIdx < 250) {
                     const gy = G.cachedGhostY;
                     if (gy >= 0 && gy !== G.currentPiece.y) {
@@ -1422,7 +1407,6 @@
                                 }
                             }
                 }
-
                 if (G.hdAnim && instIdx < 250) {
                     const elapsed = performance.now() - G.hdAnim.startTime,
                         tVal = Math.min(elapsed / G.hdAnim.duration, 1),
@@ -1451,7 +1435,6 @@
                                 instIdx++;
                             }
                 }
-
                 if (instIdx > 0) {
                     gl.useProgram(GL.cellProg);
                     gl.uniform2f(GL.cellU_res, BW, BH);
@@ -1521,7 +1504,6 @@
                     gl.bindVertexArray(null);
                     gl.disable(gl.BLEND);
                 }
-
                 if (partCount > 0) {
                     gl.useProgram(GL.partProg);
                     gl.uniform2f(GL.partU_res, BW, BH);
@@ -1541,7 +1523,6 @@
                     gl.disable(gl.BLEND);
                 }
             }
-
             function drawNext() {
                 const ctx = nextCanvas.getContext("2d");
                 if (!ctx) return;
@@ -1625,7 +1606,6 @@
                 ctx.lineWidth = 1;
                 ctx.strokeRect(0, 0, cw, ch);
             }
-
             function updateUI() {
                 document.getElementById("scoreValue").textContent =
                     G.score.toLocaleString(getLoc());
@@ -1787,7 +1767,6 @@
                 updateLeaderboardDOM();
                 updateUI();
             }
-
             function clearDropTimer() {
                 if (G.dropTimer) {
                     clearTimeout(G.dropTimer);
@@ -1826,7 +1805,6 @@
                     ? ghostY(G.board, G.currentPiece)
                     : -1;
             }
-
             let partCount = 0;
             const MAX_PARTICLES = 600;
             const partArr = new Float32Array(MAX_PARTICLES * 7),
@@ -1911,7 +1889,6 @@
                     }
                 }
             }
-
             function spawnPiece() {
                 const np = createPiece(G.nextPiece);
                 G.nextPiece = randomPiece(G.pieceBag);
@@ -1944,7 +1921,6 @@
                 G.lockResets = 0;
                 invalidateGhostCache();
             }
-
             function lockPieceFn() {
                 if (!G.currentPiece) return false;
                 G.board = placePiece(G.board, G.currentPiece);
@@ -1997,7 +1973,6 @@
                 spawnPiece();
                 return false;
             }
-
             function scheduleDrop() {
                 clearDropTimer();
                 if (
@@ -2013,7 +1988,6 @@
                     moveDown();
                 }, getSpeed());
             }
-
             function moveDown(isManual) {
                 if (
                     G.gameOver ||
@@ -2047,7 +2021,6 @@
                     }
                 }
             }
-
             function moveLeft() {
                 if (
                     G.gameOver ||
@@ -2135,7 +2108,6 @@
                 G.lockResets = 0;
                 requestRender();
             }
-
             function handleMoveResult(moved) {
                 const og = onGround(G.board, moved);
                 G.currentPiece = moved;
@@ -2161,7 +2133,6 @@
                 }
                 invalidateGhostCache();
             }
-
             function requestRender() {
                 G.needsRender = true;
                 if (!G.animId) {
@@ -2169,7 +2140,6 @@
                     G.animId = requestAnimationFrame(renderLoop);
                 }
             }
-
             function renderLoop() {
                 const now = performance.now(),
                     dt = now - G.lastTime;
@@ -2194,7 +2164,6 @@
                     G.animId = requestAnimationFrame(renderLoop);
                 } else G.animId = null;
             }
-
             const DAS_DELAY = 170,
                 DAS_RATE = 50;
             let keyState = {
@@ -2209,7 +2178,6 @@
                     keyState.down.active
                 );
             }
-
             function updateDAS(dt) {
                 if (dt > 100) dt = 100;
                 for (const k in keyState) {
@@ -2236,7 +2204,6 @@
                     }
                 }
             }
-
             function handleKeyDown(e) {
                 if (!G.started || G.gameOver || e.repeat) return;
                 switch (e.key) {
@@ -2307,7 +2274,6 @@
             }
             document.addEventListener("keydown", handleKeyDown);
             document.addEventListener("keyup", handleKeyUp);
-
             function pollGamepad() {
                 const gamepads = navigator.getGamepads
                     ? navigator.getGamepads()
@@ -2330,7 +2296,6 @@
                     right =
                         gp.buttons[15]?.pressed || false || gp.axes[0] > 0.5,
                     down = gp.buttons[13]?.pressed || false || gp.axes[1] > 0.5;
-
                 if (left && !keyState.left.active) {
                     keyState.left.active = true;
                     keyState.left.t = 0;
@@ -2352,7 +2317,6 @@
                     moveDown(true);
                     requestRender();
                 } else if (!down) keyState.down.active = false;
-
                 if (!G.started || G.gameOver) {
                     if (gpJustPressed(9) || gpJustPressed(0)) startGameFn();
                 } else {
@@ -2381,7 +2345,6 @@
                         false;
                 gpIndicator.textContent = "";
             });
-
             boardCanvas.addEventListener("click", () => {
                 if (!G.started || G.gameOver || G.clearingLines.length > 0)
                     return;
@@ -2390,7 +2353,6 @@
             pauseOverlay.addEventListener("click", () => {
                 if (G.paused) togglePauseFn();
             });
-
             function startGameFn() {
                 clearDropTimer();
                 clearLockTimer();
@@ -2458,7 +2420,6 @@
                     requestRender();
                 }
             }
-
             startBtn.addEventListener("click", startGameFn);
             restartBtn.addEventListener("click", startGameFn);
             document.getElementById("langBtn").addEventListener("click", () => {
@@ -2468,7 +2429,6 @@
                 } catch (e) {}
                 updateLocalization();
             });
-
             boardCanvas.addEventListener("webglcontextlost", (e) => {
                 e.preventDefault();
                 if (G.animId) cancelAnimationFrame(G.animId);
@@ -2477,7 +2437,6 @@
                 initWebGL();
                 requestRender();
             });
-
             updateLocalization();
             setOverlay("start");
             initWebGL();
