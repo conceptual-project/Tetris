@@ -1,0 +1,2500 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="manifest" href="manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <link rel="apple-touch-icon" href="icons/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        <meta name="apple-mobile-web-app-title" content="Тетрис" />
+        <title>Tetris</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #0d0d0d;
+                color: #fff;
+                font-family: "Courier New", Courier, monospace;
+                user-select: none;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 16px;
+                padding: 16px;
+            }
+            .title-row {
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+                gap: 6px;
+                will-change: filter;
+                animation: titleGlow 3s ease-in-out infinite;
+            }
+            .title-letter {
+                display: grid;
+                grid-template-columns: repeat(5, 8px);
+                gap: 1px;
+            }
+            .title-letter .px {
+                width: 8px;
+                height: 8px;
+                border-radius: 1.5px;
+            }
+            .main-row {
+                display: flex;
+                gap: 24px;
+                align-items: flex-start;
+            }
+            .panel {
+                min-width: 140px;
+                max-width: 170px;
+            }
+            .panel-box {
+                border-radius: 6px;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            .panel-box h3,
+            .panel-box .label {
+                text-transform: uppercase;
+                font-size: 0.65rem;
+                color: #888;
+                letter-spacing: 0.15em;
+                margin-bottom: 4px;
+                text-align: center;
+            }
+            .scroll-box {
+                max-height: 520px;
+                overflow-y: auto;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(200, 168, 232, 0.3) transparent;
+            }
+            .scroll-box::-webkit-scrollbar {
+                width: 4px;
+            }
+            .scroll-box::-webkit-scrollbar-thumb {
+                background: rgba(200, 168, 232, 0.3);
+                border-radius: 2px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th {
+                font-size: 0.5rem;
+                color: #555;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                border-bottom: 1px solid #333;
+                text-align: left;
+                padding: 2px 4px;
+            }
+            td {
+                font-size: 0.6rem;
+                color: #888;
+                padding: 2px 4px;
+                border-bottom: 1px solid #1a1a1a;
+            }
+            tr.highlight td {
+                color: #fff;
+                font-weight: bold;
+            }
+            .board-wrap {
+                position: relative;
+            }
+            .board-wrap canvas {
+                display: block;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .gp-indicator {
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                z-index: 15;
+                pointer-events: none;
+                font-size: 0.55rem;
+                color: #888;
+            }
+            .bonus-popup {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 20;
+                pointer-events: none;
+                font-weight: bold;
+                white-space: nowrap;
+                font-size: 1.6rem;
+                color: #fff;
+                text-shadow:
+                    0 0 3px rgba(0, 0, 0, 1),
+                    2px 2px 4px rgba(0, 0, 0, 0.9),
+                    -2px -2px 4px rgba(0, 0, 0, 0.9),
+                    0 0 18px rgba(255, 200, 120, 0.7),
+                    0 0 40px rgba(255, 180, 100, 0.35);
+                display: none;
+            }
+            .overlay {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 10;
+                border-radius: 4px;
+                background: rgba(10, 10, 10, 0.72);
+                backdrop-filter: blur(6px);
+            }
+            .overlay h2 {
+                font-size: 1.2rem;
+                margin-bottom: 8px;
+            }
+            .overlay p {
+                font-size: 0.7rem;
+                margin-bottom: 8px;
+                color: #ccc;
+            }
+            .overlay .hint {
+                font-size: 0.6rem;
+                color: #666;
+            }
+            .overlay-btn {
+                padding: 12px 32px;
+                border: none;
+                font-weight: bold;
+                cursor: pointer;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #c8a8e8, #a8c8e8);
+                color: #1a1a2e;
+                font-family: inherit;
+                font-size: 1.1rem;
+                box-shadow: 0 2px 12px rgba(200, 168, 232, 0.3);
+                transition: transform 0.15s;
+            }
+            .overlay-btn:hover {
+                transform: scale(1.05);
+            }
+            .right-panel {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                min-width: 150px;
+            }
+            .stat-box {
+                border-radius: 6px;
+                padding: 10px;
+                background: rgba(20, 20, 30, 0.75);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            .stat-box .label {
+                text-transform: uppercase;
+                font-size: 0.65rem;
+                color: #888;
+                letter-spacing: 0.15em;
+                margin-bottom: 2px;
+            }
+            .stat-box .value {
+                font-weight: bold;
+                font-size: 1.1rem;
+                color: #fff;
+            }
+            .stat-box .value.purple {
+                color: #c8a8e8;
+            }
+            .stat-box .value.green {
+                color: #a8e8c8;
+            }
+            .controls-box {
+                border-radius: 6px;
+                padding: 10px;
+                margin-top: 4px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            .controls-box .label {
+                text-transform: uppercase;
+                font-size: 0.65rem;
+                color: #888;
+                letter-spacing: 0.15em;
+                margin-bottom: 6px;
+            }
+            .controls-box p {
+                font-size: 0.6rem;
+                color: #666;
+                line-height: 1.7;
+            }
+            .lang-btn {
+                width: 100%;
+                border-radius: 6px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: #999;
+                font-family: inherit;
+                font-size: 0.6rem;
+                font-weight: bold;
+                letter-spacing: 0.06em;
+                padding: 6px 4px;
+            }
+            .gameover-table {
+                width: 80%;
+                max-width: 280px;
+                max-height: 220px;
+                overflow-y: auto;
+                margin-bottom: 12px;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(200, 168, 232, 0.3) transparent;
+            }
+            .gameover-table table th {
+                font-size: 0.6rem;
+                color: #777;
+                border-color: #333;
+            }
+            .gameover-table table td {
+                font-size: 0.7rem;
+                color: #bbb;
+                border-color: #222;
+            }
+            .gameover-table table tr.highlight td {
+                color: #fff;
+                font-weight: bold;
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.4;
+                }
+            }
+            @keyframes titleGlow {
+                0%,
+                100% {
+                    filter: drop-shadow(0 0 8px rgba(200, 168, 232, 0.4))
+                        drop-shadow(0 0 20px rgba(200, 168, 232, 0.2));
+                }
+                50% {
+                    filter: drop-shadow(0 0 14px rgba(200, 168, 232, 0.6))
+                        drop-shadow(0 0 30px rgba(200, 168, 232, 0.3));
+                }
+            }
+            .pulse-anim {
+                animation: pulse 1s ease-in-out infinite;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="titleRow" class="title-row"></div>
+        <div class="main-row">
+            <div class="panel">
+                <div class="panel-box">
+                    <div class="label" id="recordsLabel"></div>
+                    <div class="scroll-box" id="leaderboardBox"></div>
+                </div>
+            </div>
+            <div class="board-wrap" id="boardWrap">
+                <span class="gp-indicator" id="gpIndicator"></span>
+                <canvas id="boardCanvas"></canvas>
+                <div class="bonus-popup" id="bonusPopup"></div>
+                <div class="overlay" id="startOverlay">
+                    <button class="overlay-btn" id="startBtn"></button>
+                </div>
+                <div class="overlay" id="gameoverOverlay" style="display: none">
+                    <h2 id="goTitle" style="color: #f0a8b8"></h2>
+                    <p id="goScore"></p>
+                    <div class="gameover-table" id="goLeaderboard"></div>
+                    <button class="overlay-btn" id="restartBtn"></button>
+                </div>
+                <div
+                    class="overlay"
+                    id="pauseOverlay"
+                    style="display: none; cursor: pointer"
+                >
+                    <h2
+                        class="pulse-anim"
+                        id="pauseTitle"
+                        style="color: #c8a8e8"
+                    ></h2>
+                    <p class="hint" id="pauseHint"></p>
+                </div>
+            </div>
+            <div class="right-panel">
+                <div class="stat-box">
+                    <div class="label" id="nextLabel"></div>
+                    <canvas
+                        id="nextCanvas"
+                        width="150"
+                        height="90"
+                        style="width: 100%; border-radius: 4px"
+                    ></canvas>
+                </div>
+                <div class="stat-box">
+                    <div class="label" id="scoreLabel"></div>
+                    <div class="value" id="scoreValue">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label" id="levelLabel"></div>
+                    <div class="value purple" id="levelValue">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label" id="linesLabel"></div>
+                    <div class="value green" id="linesValue">0</div>
+                </div>
+                <div class="controls-box">
+                    <div class="label" id="controlsLabel"></div>
+                    <p id="ctrlMove"></p>
+                    <p id="ctrlRotate"></p>
+                    <p id="ctrlSoft"></p>
+                    <p id="ctrlHard"></p>
+                    <p id="ctrlPause"></p>
+                </div>
+                <button class="lang-btn" id="langBtn">EN</button>
+            </div>
+        </div>
+
+        <script>
+            const COLS = 10,
+                ROWS = 20,
+                CELL = 28,
+                BW = COLS * CELL,
+                BH = ROWS * CELL;
+
+            const COLORS = {
+                I: {
+                    base: "#a8d8ea",
+                    light: "#d0eef8",
+                    mid: "#88c8dc",
+                    dark: "#68a8bc",
+                    glow: [168, 216, 234],
+                },
+                O: {
+                    base: "#fce4a8",
+                    light: "#fef0cc",
+                    mid: "#f0d080",
+                    dark: "#d4b058",
+                    glow: [252, 228, 168],
+                },
+                T: {
+                    base: "#d4b8e8",
+                    light: "#e8d4f4",
+                    mid: "#b898d0",
+                    dark: "#9878b0",
+                    glow: [212, 184, 232],
+                },
+                S: {
+                    base: "#b8e8c8",
+                    light: "#d4f4e0",
+                    mid: "#90d0a8",
+                    dark: "#70b088",
+                    glow: [184, 232, 200],
+                },
+                Z: {
+                    base: "#f0b8c0",
+                    light: "#f8d4d8",
+                    mid: "#e09098",
+                    dark: "#c87078",
+                    glow: [240, 184, 192],
+                },
+                J: {
+                    base: "#b8c8f0",
+                    light: "#d4dcf8",
+                    mid: "#90a8d8",
+                    dark: "#7088b8",
+                    glow: [184, 200, 240],
+                },
+                L: {
+                    base: "#f0d0b0",
+                    light: "#f8e4cc",
+                    mid: "#e0b088",
+                    dark: "#c89068",
+                    glow: [240, 208, 176],
+                },
+            };
+
+            const PIXEL_MAPS = {
+                Т: [
+                    [1, 1, 1, 1, 1],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                ],
+                Е: [
+                    [1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 0],
+                    [1, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 1],
+                ],
+                Р: [
+                    [1, 1, 1, 1, 0],
+                    [1, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 0],
+                    [1, 0, 0, 0, 0],
+                    [1, 0, 0, 0, 0],
+                ],
+                И: [
+                    [1, 0, 0, 0, 1],
+                    [1, 0, 0, 1, 1],
+                    [1, 0, 1, 0, 1],
+                    [1, 1, 0, 0, 1],
+                    [1, 0, 0, 0, 1],
+                ],
+                С: [
+                    [0, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0],
+                    [1, 0, 0, 0, 0],
+                    [1, 0, 0, 0, 0],
+                    [0, 1, 1, 1, 1],
+                ],
+                T: [
+                    [1, 1, 1, 1, 1],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                ],
+                E: [
+                    [1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 0],
+                    [1, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 1],
+                ],
+                R: [
+                    [1, 1, 1, 1, 0],
+                    [1, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 0],
+                    [1, 0, 0, 1, 0],
+                    [1, 0, 0, 0, 1],
+                ],
+                I: [
+                    [1, 1, 1, 1, 1],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [1, 1, 1, 1, 1],
+                ],
+                S: [
+                    [0, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 0],
+                ],
+            };
+
+            const TITLE_PIECE_COLORS = [
+                COLORS.T,
+                COLORS.S,
+                COLORS.I,
+                COLORS.Z,
+                COLORS.L,
+                COLORS.O,
+            ];
+
+            const SHAPES = {
+                I: [
+                    [
+                        [0, 0, 0, 0],
+                        [1, 1, 1, 1],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                    ],
+                    [
+                        [0, 0, 1, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 1, 0],
+                    ],
+                    [
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                        [1, 1, 1, 1],
+                        [0, 0, 0, 0],
+                    ],
+                    [
+                        [0, 1, 0, 0],
+                        [0, 1, 0, 0],
+                        [0, 1, 0, 0],
+                        [0, 1, 0, 0],
+                    ],
+                ],
+                O: [
+                    [
+                        [1, 1],
+                        [1, 1],
+                    ],
+                    [
+                        [1, 1],
+                        [1, 1],
+                    ],
+                    [
+                        [1, 1],
+                        [1, 1],
+                    ],
+                    [
+                        [1, 1],
+                        [1, 1],
+                    ],
+                ],
+                T: [
+                    [
+                        [0, 1, 0],
+                        [1, 1, 1],
+                        [0, 0, 0],
+                    ],
+                    [
+                        [0, 1, 0],
+                        [0, 1, 1],
+                        [0, 1, 0],
+                    ],
+                    [
+                        [0, 0, 0],
+                        [1, 1, 1],
+                        [0, 1, 0],
+                    ],
+                    [
+                        [0, 1, 0],
+                        [1, 1, 0],
+                        [0, 1, 0],
+                    ],
+                ],
+                S: [
+                    [
+                        [0, 1, 1],
+                        [1, 1, 0],
+                        [0, 0, 0],
+                    ],
+                    [
+                        [0, 1, 0],
+                        [0, 1, 1],
+                        [0, 0, 1],
+                    ],
+                    [
+                        [0, 0, 0],
+                        [0, 1, 1],
+                        [1, 1, 0],
+                    ],
+                    [
+                        [1, 0, 0],
+                        [1, 1, 0],
+                        [0, 1, 0],
+                    ],
+                ],
+                Z: [
+                    [
+                        [1, 1, 0],
+                        [0, 1, 1],
+                        [0, 0, 0],
+                    ],
+                    [
+                        [0, 0, 1],
+                        [0, 1, 1],
+                        [0, 1, 0],
+                    ],
+                    [
+                        [0, 0, 0],
+                        [1, 1, 0],
+                        [0, 1, 1],
+                    ],
+                    [
+                        [0, 1, 0],
+                        [1, 1, 0],
+                        [1, 0, 0],
+                    ],
+                ],
+                J: [
+                    [
+                        [1, 0, 0],
+                        [1, 1, 1],
+                        [0, 0, 0],
+                    ],
+                    [
+                        [0, 1, 1],
+                        [0, 1, 0],
+                        [0, 1, 0],
+                    ],
+                    [
+                        [0, 0, 0],
+                        [1, 1, 1],
+                        [0, 0, 1],
+                    ],
+                    [
+                        [0, 1, 0],
+                        [0, 1, 0],
+                        [1, 1, 0],
+                    ],
+                ],
+                L: [
+                    [
+                        [0, 0, 1],
+                        [1, 1, 1],
+                        [0, 0, 0],
+                    ],
+                    [
+                        [0, 1, 0],
+                        [0, 1, 0],
+                        [0, 1, 1],
+                    ],
+                    [
+                        [0, 0, 0],
+                        [1, 1, 1],
+                        [1, 0, 0],
+                    ],
+                    [
+                        [1, 1, 0],
+                        [0, 1, 0],
+                        [0, 1, 0],
+                    ],
+                ],
+            };
+
+            const PIECE_TYPES = ["I", "O", "T", "S", "Z", "J", "L"],
+                LINE_SCORES = [0, 40, 100, 300, 1200],
+                PERFECT_CLEAR_BONUS = 2000;
+            const LEVEL_SPEEDS = [
+                800, 717, 633, 550, 467, 383, 300, 217, 133, 100, 83, 67, 50,
+                33, 17,
+            ];
+            const LOCK_DELAY = 500,
+                MAX_LOCK_RESETS = 15,
+                CLEAR_DURATION = 175;
+
+            const LOC = {
+                title: { ru: "ТЕТРИС", en: "TETRIS" },
+                play: { ru: "ИГРАТЬ", en: "PLAY" },
+                restart: { ru: "ЗАНОВО", en: "AGAIN" },
+                gameOver: { ru: "КОНЕЦ ИГРЫ", en: "GAME OVER" },
+                pause: { ru: "ПАУЗА", en: "PAUSED" },
+                next: { ru: "Следующая", en: "Next" },
+                score: { ru: "Счёт", en: "Score" },
+                level: { ru: "Уровень", en: "Level" },
+                lines: { ru: "Линии", en: "Lines" },
+                controls: { ru: "Управление", en: "Controls" },
+                records: { ru: "Рекорды", en: "Records" },
+                hintResume: {
+                    ru: "Щелчок / P / Esc — продолжить",
+                    en: "Click / P / Esc — resume",
+                },
+                ctrlMove: { ru: "← → Движение", en: "← → Move" },
+                ctrlRotate: { ru: "↑ Вращение", en: "↑ Rotate" },
+                ctrlSoft: { ru: "↓ Мягкий сброс", en: "↓ Soft drop" },
+                ctrlHard: { ru: "Пробел Жёсткий сброс", en: "Space Hard drop" },
+                ctrlPause: {
+                    ru: "Щелчок / P / Esc Пауза",
+                    en: "Click / P / Esc Pause",
+                },
+                scoreLabel: { ru: "Счёт: ", en: "Score: " },
+                bonusLabel: { ru: "Бонус за очистку: +", en: "Clear bonus: +" },
+                perfectClear: {
+                    ru: "ИДЕАЛЬНАЯ ОЧИСТКА! +",
+                    en: "PERFECT CLEAR! +",
+                },
+                tetrisBonus: { ru: "БОНУС! +", en: "BONUS! +" },
+                noRecords: { ru: "Пока нет рекордов", en: "No records yet" },
+                lbNum: { ru: "№", en: "#" },
+                lbScore: { ru: "Счёт", en: "Score" },
+                lbLevel: { ru: "Ур.", en: "Lv." },
+                lbLines: { ru: "Лин.", en: "Ln." },
+                lbDate: { ru: "Дата", en: "Date" },
+                gamepad: { ru: "Геймпад подключён", en: "Gamepad connected" },
+            };
+
+            function t(key) {
+                return LOC[key]?.[G.lang] || LOC[key]?.ru || key;
+            }
+            function getLoc() {
+                return G.lang === "ru" ? "ru-RU" : "en-US";
+            }
+
+            const SRS_JLSTZ = {
+                "0_1": [
+                    [0, 0],
+                    [-1, 0],
+                    [-1, -1],
+                    [0, 2],
+                    [-1, 2],
+                ],
+                "1_2": [
+                    [0, 0],
+                    [1, 0],
+                    [1, 1],
+                    [0, -2],
+                    [1, -2],
+                ],
+                "2_3": [
+                    [0, 0],
+                    [1, 0],
+                    [1, -1],
+                    [0, 2],
+                    [1, 2],
+                ],
+                "3_0": [
+                    [0, 0],
+                    [-1, 0],
+                    [-1, 1],
+                    [0, -2],
+                    [-1, -2],
+                ],
+            };
+            const SRS_I = {
+                "0_1": [
+                    [0, 0],
+                    [-2, 0],
+                    [1, 0],
+                    [-2, -1],
+                    [1, 2],
+                ],
+                "1_2": [
+                    [0, 0],
+                    [-1, 0],
+                    [2, 0],
+                    [-1, 2],
+                    [2, -1],
+                ],
+                "2_3": [
+                    [0, 0],
+                    [2, 0],
+                    [-1, 0],
+                    [2, 1],
+                    [-1, -2],
+                ],
+                "3_0": [
+                    [0, 0],
+                    [1, 0],
+                    [-2, 0],
+                    [1, -2],
+                    [-2, 1],
+                ],
+            };
+
+            function createEmptyBoard() {
+                return Array.from({ length: ROWS }, () =>
+                    Array(COLS).fill(null),
+                );
+            }
+            function randomPiece(bag) {
+                if (bag.length === 0) {
+                    bag.push(...PIECE_TYPES);
+                    for (let i = bag.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [bag[i], bag[j]] = [bag[j], bag[i]];
+                    }
+                }
+                return bag.pop();
+            }
+            function getShape(type, rot) {
+                return SHAPES[type][rot];
+            }
+            function createPiece(type) {
+                const s = getShape(type, 0);
+                return {
+                    type,
+                    rotation: 0,
+                    x: Math.floor((COLS - s[0].length) / 2),
+                    y: 0,
+                };
+            }
+            function isValid(b, p) {
+                const s = getShape(p.type, p.rotation);
+                for (let r = 0; r < s.length; r++)
+                    for (let c = 0; c < s[r].length; c++)
+                        if (s[r][c]) {
+                            const nx = p.x + c,
+                                ny = p.y + r;
+                            if (nx < 0 || nx >= COLS || ny >= ROWS)
+                                return false;
+                            if (ny >= 0 && b[ny][nx] !== null) return false;
+                        }
+                return true;
+            }
+            function placePiece(b, p) {
+                const s = getShape(p.type, p.rotation);
+                for (let r = 0; r < s.length; r++)
+                    for (let c = 0; c < s[r].length; c++)
+                        if (s[r][c]) {
+                            const bx = p.x + c,
+                                by = p.y + r;
+                            if (by >= 0 && by < ROWS && bx >= 0 && bx < COLS)
+                                b[by][bx] = p.type;
+                        }
+                return b;
+            }
+            function getCompletedLines(b) {
+                const res = [];
+                for (let r = 0; r < ROWS; r++)
+                    if (b[r].every((c) => c !== null)) res.push(r);
+                return res;
+            }
+            function removeLines(b, ls) {
+                for (let i = 0; i < ls.length; i++) {
+                    for (let r = ls[i]; r > 0; r--)
+                        for (let c = 0; c < COLS; c++) b[r][c] = b[r - 1][c];
+                    for (let c = 0; c < COLS; c++) b[0][c] = null;
+                }
+                return b;
+            }
+            function isBoardEmpty(b) {
+                return b[ROWS - 1].every((c) => c === null);
+            }
+            function tryRotate(b, p) {
+                const nr = (((p.rotation + 1) % 4) + 4) % 4,
+                    rp = { ...p, rotation: nr };
+                if (p.type === "O") return isValid(b, rp) ? rp : null;
+                const kicks =
+                    p.type === "I"
+                        ? SRS_I[p.rotation + "_" + nr]
+                        : SRS_JLSTZ[p.rotation + "_" + nr];
+                if (!kicks) return isValid(b, rp) ? rp : null;
+                for (const [kx, ky] of kicks) {
+                    const kp = { ...rp, x: rp.x + kx, y: rp.y + ky };
+                    if (isValid(b, kp)) return kp;
+                }
+                return null;
+            }
+            function ghostY(b, p) {
+                let gy = p.y;
+                while (isValid(b, { ...p, y: gy + 1 })) gy++;
+                return gy;
+            }
+            function onGround(b, p) {
+                return !isValid(b, { ...p, y: p.y + 1 });
+            }
+
+            let G = {
+                board: createEmptyBoard(),
+                currentPiece: null,
+                nextPiece:
+                    PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)],
+                score: 0,
+                level: 0,
+                lines: 0,
+                gameOver: false,
+                paused: false,
+                started: false,
+                clearingLines: [],
+                clearingLineSet: null,
+                removingStart: 0,
+                lockDelayActive: false,
+                lockResets: 0,
+                cachedGhostY: -1,
+                totalBonus: 0,
+                hdAnim: null,
+                dropTimer: null,
+                lockTimer: null,
+                clearTimer: null,
+                bonusTimer: null,
+                animId: null,
+                needsRender: true,
+                pieceBag: [],
+                gpConnected: false,
+                gpPrevState: null,
+                lang: "ru",
+                overlay: "start",
+                highlightIdx: -1,
+                lastTime: performance.now(),
+            };
+            try {
+                const s = localStorage.getItem("tetris_lang");
+                if (s === "en" || s === "ru") G.lang = s;
+            } catch (e) {}
+
+            const LB_KEY = "tetris_leaderboard";
+            function loadLeaderboard() {
+                try {
+                    const data = localStorage.getItem(LB_KEY);
+                    if (data) {
+                        const lb = JSON.parse(data);
+                        if (lb.length > 10) lb.length = 10;
+                        return lb;
+                    }
+                } catch (e) {}
+                return [];
+            }
+            function saveLeaderboard(data) {
+                try {
+                    localStorage.setItem(LB_KEY, JSON.stringify(data));
+                } catch (e) {}
+            }
+            function addScoreToLeaderboard(sc, lv, ln) {
+                let lb = loadLeaderboard();
+                const entry = {
+                    score: sc,
+                    level: lv,
+                    lines: ln,
+                    date: new Date().toLocaleDateString(getLoc()),
+                };
+                lb.push(entry);
+                lb.sort((a, b) => b.score - a.score);
+                if (lb.length > 10) lb.length = 10;
+                saveLeaderboard(lb);
+                return {
+                    leaderboard: lb,
+                    highlightIdx: lb.findIndex((e) => e === entry),
+                };
+            }
+
+            const boardCanvas = document.getElementById("boardCanvas"),
+                nextCanvas = document.getElementById("nextCanvas"),
+                titleRow = document.getElementById("titleRow");
+            const bonusPopup = document.getElementById("bonusPopup"),
+                startOverlay = document.getElementById("startOverlay"),
+                gameoverOverlay = document.getElementById("gameoverOverlay");
+            const pauseOverlay = document.getElementById("pauseOverlay"),
+                startBtn = document.getElementById("startBtn"),
+                restartBtn = document.getElementById("restartBtn"),
+                gpIndicator = document.getElementById("gpIndicator");
+
+            let gl = null,
+                GL = null;
+            boardCanvas.width = BW;
+            boardCanvas.height = BH;
+
+            function initWebGL() {
+                gl = boardCanvas.getContext("webgl2", {
+                    alpha: false,
+                    antialias: false,
+                    premultipliedAlpha: false,
+                });
+                if (!gl) return;
+                const BG_VS = `#version 300 es\nlayout(location=0) in vec2 a_pos; out vec2 v_uv; void main(){ gl_Position=vec4(a_pos,0,1); v_uv=a_pos*0.5+0.5; }`;
+                const BG_FS = `#version 300 es\nprecision mediump float; in vec2 v_uv; uniform sampler2D u_tex; out vec4 fc; void main(){ fc=texture(u_tex,v_uv); }`;
+                const CELL_VS = `#version 300 es\nlayout(location=0) in vec2 a_pos; layout(location=1) in vec2 a_off; layout(location=2) in float a_sz; layout(location=3) in vec4 a_uv; layout(location=4) in float a_alpha; uniform vec2 u_res; out vec2 v_uv; out float v_a; void main(){ vec2 px=a_off+a_pos*a_sz; vec2 cp=(px/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); v_uv=a_uv.xy+a_pos*a_uv.zw; v_a=a_alpha; }`;
+                const CELL_FS = `#version 300 es\nprecision mediump float; in vec2 v_uv; in float v_a; uniform sampler2D u_tex; out vec4 fc; void main(){ vec4 t=texture(u_tex,v_uv); fc=vec4(t.rgb,t.a*v_a); }`;
+                const PART_VS = `#version 300 es\nlayout(location=0) in vec2 a_pos; layout(location=1) in float a_sz; layout(location=2) in vec4 a_col; uniform vec2 u_res; out vec4 v_col; void main(){ vec2 cp=(a_pos/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); gl_PointSize=a_sz*2.0; v_col=a_col; }`;
+                const PART_FS = `#version 300 es\nprecision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5)discard; float a=v_col.a*smoothstep(0.5,0.05,d); fc=vec4(v_col.rgb,a); }`;
+
+                function compileShader(src, type) {
+                    const s = gl.createShader(type);
+                    gl.shaderSource(s, src);
+                    gl.compileShader(s);
+                    return s;
+                }
+                function createProgram(vs, fs) {
+                    const p = gl.createProgram(),
+                        vShader = compileShader(vs, gl.VERTEX_SHADER),
+                        fShader = compileShader(fs, gl.FRAGMENT_SHADER);
+                    gl.attachShader(p, vShader);
+                    gl.attachShader(p, fShader);
+                    gl.linkProgram(p);
+                    gl.deleteShader(vShader);
+                    gl.deleteShader(fShader);
+                    return p;
+                }
+
+                const bgProg = createProgram(BG_VS, BG_FS),
+                    cellProg = createProgram(CELL_VS, CELL_FS),
+                    partProg = createProgram(PART_VS, PART_FS);
+                const bgU_tex = gl.getUniformLocation(bgProg, "u_tex"),
+                    cellU_res = gl.getUniformLocation(cellProg, "u_res"),
+                    cellU_tex = gl.getUniformLocation(cellProg, "u_tex");
+                const partU_res = gl.getUniformLocation(partProg, "u_res"),
+                    cellA_pos = gl.getAttribLocation(cellProg, "a_pos"),
+                    cellA_off = gl.getAttribLocation(cellProg, "a_off");
+                const cellA_sz = gl.getAttribLocation(cellProg, "a_sz"),
+                    cellA_uv = gl.getAttribLocation(cellProg, "a_uv"),
+                    cellA_alpha = gl.getAttribLocation(cellProg, "a_alpha");
+                const partA_pos = gl.getAttribLocation(partProg, "a_pos"),
+                    partA_sz = gl.getAttribLocation(partProg, "a_sz"),
+                    partA_col = gl.getAttribLocation(partProg, "a_col");
+
+                function roundRect(ctx, x, y, w, h, radii) {
+                    let tl, tr, br, bl;
+                    if (Array.isArray(radii)) {
+                        [tl, tr, br, bl] = radii;
+                    } else {
+                        tl = tr = br = bl = radii;
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(x + tl, y);
+                    ctx.lineTo(x + w - tr, y);
+                    ctx.quadraticCurveTo(x + w, y, x + w, y + tr);
+                    ctx.lineTo(x + w, y + h - br);
+                    ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+                    ctx.lineTo(x + bl, y + h);
+                    ctx.quadraticCurveTo(x, y + h, x, y + h - bl);
+                    ctx.lineTo(x, y + tl);
+                    ctx.quadraticCurveTo(x, y, x + tl, y);
+                    ctx.closePath();
+                }
+                function drawGlassCell(ctx, x, y, type, cellSize, isGhost) {
+                    const co = COLORS[type],
+                        px = x * cellSize,
+                        py = y * cellSize,
+                        cs = cellSize,
+                        r = 3;
+                    if (isGhost) {
+                        ctx.save();
+                        ctx.globalAlpha = 0.18;
+                        ctx.fillStyle = co.base;
+                        roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
+                        ctx.fill();
+                        ctx.globalAlpha = 0.35;
+                        ctx.strokeStyle = co.light;
+                        ctx.lineWidth = 1;
+                        roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
+                        ctx.stroke();
+                        ctx.restore();
+                        return;
+                    }
+                    ctx.save();
+                    const grad = ctx.createLinearGradient(px, py, px, py + cs);
+                    grad.addColorStop(0, co.light);
+                    grad.addColorStop(0.35, co.base);
+                    grad.addColorStop(0.7, co.mid);
+                    grad.addColorStop(1, co.dark);
+                    ctx.fillStyle = grad;
+                    roundRect(ctx, px + 0.5, py + 0.5, cs - 1, cs - 1, r);
+                    ctx.fill();
+                    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+                    ctx.lineWidth = 1;
+                    roundRect(ctx, px + 1.5, py + 1.5, cs - 3, cs - 3, r - 0.5);
+                    ctx.stroke();
+                    const shineH = cs * 0.38;
+                    ctx.globalAlpha = 0.45;
+                    const shG = ctx.createLinearGradient(
+                        px,
+                        py,
+                        px,
+                        py + shineH,
+                    );
+                    shG.addColorStop(0, "rgba(255,255,255,0.7)");
+                    shG.addColorStop(1, "rgba(255,255,255,0)");
+                    ctx.fillStyle = shG;
+                    roundRect(ctx, px + 2, py + 2, cs - 4, shineH, [
+                        r - 1,
+                        r - 1,
+                        0,
+                        0,
+                    ]);
+                    ctx.fill();
+                    ctx.globalAlpha = 0.6;
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        px + cs * 0.28,
+                        py + cs * 0.22,
+                        cs * 0.08,
+                        cs * 0.05,
+                        -0.3,
+                        0,
+                        Math.PI * 2,
+                    );
+                    ctx.fill();
+                    ctx.globalAlpha = 0.15;
+                    const sG = ctx.createLinearGradient(
+                        px,
+                        py + cs * 0.7,
+                        px,
+                        py + cs,
+                    );
+                    sG.addColorStop(0, "rgba(0,0,0,0)");
+                    sG.addColorStop(1, "rgba(0,0,0,0.5)");
+                    ctx.fillStyle = sG;
+                    roundRect(ctx, px + 2, py + cs * 0.65, cs - 4, cs * 0.33, [
+                        0,
+                        0,
+                        r - 1,
+                        r - 1,
+                    ]);
+                    ctx.fill();
+                    ctx.globalAlpha = 0.08;
+                    ctx.shadowColor = co.base;
+                    ctx.shadowBlur = 8;
+                    ctx.fillStyle = co.base;
+                    roundRect(ctx, px, py, cs, cs, r);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 1;
+                    ctx.restore();
+                }
+
+                const atlasCanvas = document.createElement("canvas");
+                atlasCanvas.width = 7 * CELL;
+                atlasCanvas.height = 3 * CELL;
+                const atlasCtx = atlasCanvas.getContext("2d");
+                PIECE_TYPES.forEach((type, i) =>
+                    drawGlassCell(atlasCtx, i, 0, type, CELL, false),
+                );
+                PIECE_TYPES.forEach((type, i) =>
+                    drawGlassCell(atlasCtx, i, 1, type, CELL, true),
+                );
+                PIECE_TYPES.forEach((_type, i) => {
+                    const px = i * CELL,
+                        py = 2 * CELL;
+                    atlasCtx.save();
+                    atlasCtx.strokeStyle = "rgba(255,255,255,0.55)";
+                    atlasCtx.lineWidth = 1.5;
+                    atlasCtx.setLineDash([3, 3]);
+                    roundRect(atlasCtx, px + 1, py + 1, CELL - 2, CELL - 2, 3);
+                    atlasCtx.stroke();
+                    atlasCtx.restore();
+                });
+                const cellUVTable = {};
+                PIECE_TYPES.forEach((type, ti) => {
+                    cellUVTable[type] = {
+                        0: [
+                            (ti * CELL) / atlasCanvas.width,
+                            0,
+                            CELL / atlasCanvas.width,
+                            CELL / atlasCanvas.height,
+                        ],
+                        1: [
+                            (ti * CELL) / atlasCanvas.width,
+                            CELL / atlasCanvas.height,
+                            CELL / atlasCanvas.width,
+                            CELL / atlasCanvas.height,
+                        ],
+                        2: [
+                            (ti * CELL) / atlasCanvas.width,
+                            (2 * CELL) / atlasCanvas.height,
+                            CELL / atlasCanvas.width,
+                            CELL / atlasCanvas.height,
+                        ],
+                    };
+                });
+
+                const bgCanvas = document.createElement("canvas");
+                bgCanvas.width = BW;
+                bgCanvas.height = BH;
+                const bgCtx = bgCanvas.getContext("2d");
+                const bgG = bgCtx.createLinearGradient(0, 0, 0, BH);
+                bgG.addColorStop(0, "#0e0e18");
+                bgG.addColorStop(1, "#0a0a10");
+                bgCtx.fillStyle = bgG;
+                bgCtx.fillRect(0, 0, BW, BH);
+                bgCtx.strokeStyle = "rgba(255,255,255,0.03)";
+                bgCtx.lineWidth = 0.5;
+                for (let x = 0; x <= COLS; x++) {
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(x * CELL, 0);
+                    bgCtx.lineTo(x * CELL, BH);
+                    bgCtx.stroke();
+                }
+                for (let y = 0; y <= ROWS; y++) {
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(0, y * CELL);
+                    bgCtx.lineTo(BW, y * CELL);
+                    bgCtx.stroke();
+                }
+                bgCtx.strokeStyle = "rgba(255,255,255,0.1)";
+                bgCtx.lineWidth = 2;
+                bgCtx.strokeRect(0, 0, BW, BH);
+
+                function createTex(canvas) {
+                    const tex = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, tex);
+                    gl.texImage2D(
+                        gl.TEXTURE_2D,
+                        0,
+                        gl.RGBA,
+                        gl.RGBA,
+                        gl.UNSIGNED_BYTE,
+                        canvas,
+                    );
+                    gl.texParameteri(
+                        gl.TEXTURE_2D,
+                        gl.TEXTURE_MIN_FILTER,
+                        gl.LINEAR,
+                    );
+                    gl.texParameteri(
+                        gl.TEXTURE_2D,
+                        gl.TEXTURE_WRAP_S,
+                        gl.CLAMP_TO_EDGE,
+                    );
+                    gl.texParameteri(
+                        gl.TEXTURE_2D,
+                        gl.TEXTURE_WRAP_T,
+                        gl.CLAMP_TO_EDGE,
+                    );
+                    return tex;
+                }
+                const bgTex = createTex(bgCanvas),
+                    atlasTex = createTex(atlasCanvas);
+
+                const bgVao = gl.createVertexArray(),
+                    bgBuf = gl.createBuffer();
+                gl.bindVertexArray(bgVao);
+                gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
+                gl.bufferData(
+                    gl.ARRAY_BUFFER,
+                    new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+                    gl.STATIC_DRAW,
+                );
+                gl.enableVertexAttribArray(0);
+                gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+                gl.bindVertexArray(null);
+                const cellQuadVao = gl.createVertexArray(),
+                    cellQuadBuf = gl.createBuffer();
+                gl.bindVertexArray(cellQuadVao);
+                gl.bindBuffer(gl.ARRAY_BUFFER, cellQuadBuf);
+                gl.bufferData(
+                    gl.ARRAY_BUFFER,
+                    new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
+                    gl.STATIC_DRAW,
+                );
+                gl.enableVertexAttribArray(cellA_pos);
+                gl.vertexAttribPointer(cellA_pos, 2, gl.FLOAT, false, 0, 0);
+                gl.bindVertexArray(null);
+
+                const cellInstBuf = gl.createBuffer(),
+                    cellInstArr = new Float32Array(250 * 8);
+                gl.bindBuffer(gl.ARRAY_BUFFER, cellInstBuf);
+                gl.bufferData(
+                    gl.ARRAY_BUFFER,
+                    cellInstArr.byteLength,
+                    gl.DYNAMIC_DRAW,
+                );
+                const partBuf = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, partBuf);
+                gl.bufferData(gl.ARRAY_BUFFER, 600 * 7 * 4, gl.DYNAMIC_DRAW);
+
+                GL = {
+                    bgProg,
+                    cellProg,
+                    partProg,
+                    bgU_tex,
+                    cellU_res,
+                    cellU_tex,
+                    partU_res,
+                    cellA_pos,
+                    cellA_off,
+                    cellA_sz,
+                    cellA_uv,
+                    cellA_alpha,
+                    partA_pos,
+                    partA_sz,
+                    partA_col,
+                    bgVao,
+                    cellQuadVao,
+                    bgBuf,
+                    cellQuadBuf,
+                    cellInstBuf,
+                    cellInstArr,
+                    partBuf,
+                    bgTex,
+                    atlasTex,
+                    cellUVTable,
+                };
+            }
+
+            function render() {
+                if (!gl || !GL) return;
+                gl.viewport(0, 0, BW, BH);
+                gl.clearColor(0.04, 0.04, 0.07, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.disable(gl.DEPTH_TEST);
+                gl.useProgram(GL.bgProg);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, GL.bgTex);
+                gl.uniform1i(GL.bgU_tex, 0);
+                gl.bindVertexArray(GL.bgVao);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                gl.bindVertexArray(null);
+
+                let instIdx = 0;
+                const cellInst = GL.cellInstArr;
+                const nowMs = performance.now();
+                let clearT = 0;
+                if (G.clearingLineSet && G.clearingLineSet.size > 0)
+                    clearT = Math.min(
+                        (nowMs - G.removingStart) / CLEAR_DURATION,
+                        1,
+                    );
+
+                for (let r = 0; r < ROWS; r++)
+                    for (let c = 0; c < COLS; c++) {
+                        if (instIdx >= 250) break;
+                        if (G.board[r][c] !== null) {
+                            if (G.clearingLineSet && G.clearingLineSet.has(r)) {
+                                const sz = CELL * (1 - clearT * 0.5),
+                                    offX = c * CELL + (CELL - sz) / 2,
+                                    offY = r * CELL + (CELL - sz) / 2;
+                                const uv = GL.cellUVTable[G.board[r][c]][0],
+                                    base = instIdx * 8;
+                                cellInst[base] = offX;
+                                cellInst[base + 1] = offY;
+                                cellInst[base + 2] = sz;
+                                cellInst[base + 3] = uv[0];
+                                cellInst[base + 4] = uv[1];
+                                cellInst[base + 5] = uv[2];
+                                cellInst[base + 6] = uv[3];
+                                cellInst[base + 7] = 1 - clearT;
+                                instIdx++;
+                            } else {
+                                const uv = GL.cellUVTable[G.board[r][c]][0],
+                                    base = instIdx * 8;
+                                cellInst[base] = c * CELL;
+                                cellInst[base + 1] = r * CELL;
+                                cellInst[base + 2] = CELL;
+                                cellInst[base + 3] = uv[0];
+                                cellInst[base + 4] = uv[1];
+                                cellInst[base + 5] = uv[2];
+                                cellInst[base + 6] = uv[3];
+                                cellInst[base + 7] = 1.0;
+                                instIdx++;
+                            }
+                        }
+                    }
+
+                if (G.currentPiece && instIdx < 250) {
+                    const gy = G.cachedGhostY;
+                    if (gy >= 0 && gy !== G.currentPiece.y) {
+                        const s = getShape(
+                            G.currentPiece.type,
+                            G.currentPiece.rotation,
+                        );
+                        for (let r = 0; r < s.length && instIdx < 250; r++)
+                            for (
+                                let c = 0;
+                                c < s[r].length && instIdx < 250;
+                                c++
+                            )
+                                if (s[r][c] && gy + r >= 0) {
+                                    const uv =
+                                            GL.cellUVTable[
+                                                G.currentPiece.type
+                                            ][1],
+                                        base = instIdx * 8;
+                                    cellInst[base] =
+                                        (G.currentPiece.x + c) * CELL;
+                                    cellInst[base + 1] = (gy + r) * CELL;
+                                    cellInst[base + 2] = CELL;
+                                    cellInst[base + 3] = uv[0];
+                                    cellInst[base + 4] = uv[1];
+                                    cellInst[base + 5] = uv[2];
+                                    cellInst[base + 6] = uv[3];
+                                    cellInst[base + 7] = 1.0;
+                                    instIdx++;
+                                }
+                    }
+                    const s = getShape(
+                        G.currentPiece.type,
+                        G.currentPiece.rotation,
+                    );
+                    for (let r = 0; r < s.length && instIdx < 250; r++)
+                        for (let c = 0; c < s[r].length && instIdx < 250; c++)
+                            if (s[r][c] && G.currentPiece.y + r >= 0) {
+                                const uv =
+                                        GL.cellUVTable[G.currentPiece.type][0],
+                                    base = instIdx * 8;
+                                cellInst[base] = (G.currentPiece.x + c) * CELL;
+                                cellInst[base + 1] =
+                                    (G.currentPiece.y + r) * CELL;
+                                cellInst[base + 2] = CELL;
+                                cellInst[base + 3] = uv[0];
+                                cellInst[base + 4] = uv[1];
+                                cellInst[base + 5] = uv[2];
+                                cellInst[base + 6] = uv[3];
+                                cellInst[base + 7] = 1.0;
+                                instIdx++;
+                                if (G.lockDelayActive && instIdx < 250) {
+                                    const luv =
+                                            GL.cellUVTable[
+                                                G.currentPiece.type
+                                            ][2],
+                                        lbase = instIdx * 8;
+                                    cellInst[lbase] =
+                                        (G.currentPiece.x + c) * CELL;
+                                    cellInst[lbase + 1] =
+                                        (G.currentPiece.y + r) * CELL;
+                                    cellInst[lbase + 2] = CELL;
+                                    cellInst[lbase + 3] = luv[0];
+                                    cellInst[lbase + 4] = luv[1];
+                                    cellInst[lbase + 5] = luv[2];
+                                    cellInst[lbase + 6] = luv[3];
+                                    cellInst[lbase + 7] = 1.0;
+                                    instIdx++;
+                                }
+                            }
+                }
+
+                if (G.hdAnim && instIdx < 250) {
+                    const elapsed = performance.now() - G.hdAnim.startTime,
+                        tVal = Math.min(elapsed / G.hdAnim.duration, 1),
+                        easedT = tVal * tVal,
+                        animY =
+                            G.hdAnim.startY +
+                            (G.hdAnim.endY - G.hdAnim.startY) * easedT,
+                        s = getShape(
+                            G.hdAnim.piece.type,
+                            G.hdAnim.piece.rotation,
+                        );
+                    for (let r = 0; r < s.length && instIdx < 250; r++)
+                        for (let c = 0; c < s[r].length && instIdx < 250; c++)
+                            if (s[r][c] && animY + r >= 0) {
+                                const uv =
+                                        GL.cellUVTable[G.hdAnim.piece.type][0],
+                                    base = instIdx * 8;
+                                cellInst[base] = (G.hdAnim.piece.x + c) * CELL;
+                                cellInst[base + 1] = (animY + r) * CELL;
+                                cellInst[base + 2] = CELL;
+                                cellInst[base + 3] = uv[0];
+                                cellInst[base + 4] = uv[1];
+                                cellInst[base + 5] = uv[2];
+                                cellInst[base + 6] = uv[3];
+                                cellInst[base + 7] = 1.0;
+                                instIdx++;
+                            }
+                }
+
+                if (instIdx > 0) {
+                    gl.useProgram(GL.cellProg);
+                    gl.uniform2f(GL.cellU_res, BW, BH);
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, GL.atlasTex);
+                    gl.uniform1i(GL.cellU_tex, 0);
+                    gl.enable(gl.BLEND);
+                    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                    gl.bindVertexArray(GL.cellQuadVao);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, GL.cellInstBuf);
+                    gl.bufferSubData(
+                        gl.ARRAY_BUFFER,
+                        0,
+                        cellInst,
+                        0,
+                        instIdx * 8,
+                    );
+                    gl.enableVertexAttribArray(GL.cellA_off);
+                    gl.vertexAttribPointer(
+                        GL.cellA_off,
+                        2,
+                        gl.FLOAT,
+                        false,
+                        32,
+                        0,
+                    );
+                    gl.vertexAttribDivisor(GL.cellA_off, 1);
+                    gl.enableVertexAttribArray(GL.cellA_sz);
+                    gl.vertexAttribPointer(
+                        GL.cellA_sz,
+                        1,
+                        gl.FLOAT,
+                        false,
+                        32,
+                        8,
+                    );
+                    gl.vertexAttribDivisor(GL.cellA_sz, 1);
+                    gl.enableVertexAttribArray(GL.cellA_uv);
+                    gl.vertexAttribPointer(
+                        GL.cellA_uv,
+                        4,
+                        gl.FLOAT,
+                        false,
+                        32,
+                        12,
+                    );
+                    gl.vertexAttribDivisor(GL.cellA_uv, 1);
+                    gl.enableVertexAttribArray(GL.cellA_alpha);
+                    gl.vertexAttribPointer(
+                        GL.cellA_alpha,
+                        1,
+                        gl.FLOAT,
+                        false,
+                        32,
+                        28,
+                    );
+                    gl.vertexAttribDivisor(GL.cellA_alpha, 1);
+                    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instIdx);
+                    gl.vertexAttribDivisor(GL.cellA_off, 0);
+                    gl.vertexAttribDivisor(GL.cellA_sz, 0);
+                    gl.vertexAttribDivisor(GL.cellA_uv, 0);
+                    gl.vertexAttribDivisor(GL.cellA_alpha, 0);
+                    gl.disableVertexAttribArray(GL.cellA_off);
+                    gl.disableVertexAttribArray(GL.cellA_sz);
+                    gl.disableVertexAttribArray(GL.cellA_uv);
+                    gl.disableVertexAttribArray(GL.cellA_alpha);
+                    gl.bindVertexArray(null);
+                    gl.disable(gl.BLEND);
+                }
+
+                if (partCount > 0) {
+                    gl.useProgram(GL.partProg);
+                    gl.uniform2f(GL.partU_res, BW, BH);
+                    gl.enable(gl.BLEND);
+                    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, GL.partBuf);
+                    gl.bufferSubData(
+                        gl.ARRAY_BUFFER,
+                        0,
+                        partArr,
+                        0,
+                        partCount * 7,
+                    );
+                    gl.bindVertexArray(GL.partVao);
+                    gl.drawArrays(gl.POINTS, 0, partCount);
+                    gl.bindVertexArray(null);
+                    gl.disable(gl.BLEND);
+                }
+            }
+
+            function drawNext() {
+                const ctx = nextCanvas.getContext("2d");
+                if (!ctx) return;
+                const ps = 18,
+                    cw = nextCanvas.width,
+                    ch = nextCanvas.height;
+                function roundRect2(x, y, w, h, r) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.lineTo(x + w - r, y);
+                    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                    ctx.lineTo(x + w, y + h - r);
+                    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                    ctx.lineTo(x + r, y + h);
+                    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                    ctx.lineTo(x, y + r);
+                    ctx.quadraticCurveTo(x, y, x + r, y);
+                    ctx.closePath();
+                }
+                const bgG = ctx.createLinearGradient(0, 0, 0, ch);
+                bgG.addColorStop(0, "#0e0e18");
+                bgG.addColorStop(1, "#0a0a10");
+                ctx.fillStyle = bgG;
+                ctx.fillRect(0, 0, cw, ch);
+                if (!G.nextPiece) return;
+                const s = getShape(G.nextPiece, 0);
+                let minR = s.length,
+                    maxR = 0,
+                    minC = s[0].length,
+                    maxC = 0;
+                for (let r = 0; r < s.length; r++)
+                    for (let c = 0; c < s[r].length; c++)
+                        if (s[r][c]) {
+                            minR = Math.min(minR, r);
+                            maxR = Math.max(maxR, r);
+                            minC = Math.min(minC, c);
+                            maxC = Math.max(maxC, c);
+                        }
+                const ox = (cw - (maxC - minC + 1) * ps) / 2 - minC * ps,
+                    oy = (ch - (maxR - minR + 1) * ps) / 2 - minR * ps;
+                for (let r = 0; r < s.length; r++)
+                    for (let c = 0; c < s[r].length; c++)
+                        if (s[r][c]) {
+                            const cx2 = ox + c * ps,
+                                cy2 = oy + r * ps,
+                                co = COLORS[G.nextPiece];
+                            const grad = ctx.createLinearGradient(
+                                cx2,
+                                cy2,
+                                cx2,
+                                cy2 + ps,
+                            );
+                            grad.addColorStop(0, co.light);
+                            grad.addColorStop(0.35, co.base);
+                            grad.addColorStop(0.7, co.mid);
+                            grad.addColorStop(1, co.dark);
+                            ctx.fillStyle = grad;
+                            roundRect2(cx2 + 0.5, cy2 + 0.5, ps - 1, ps - 1, 2);
+                            ctx.fill();
+                            ctx.globalAlpha = 0.4;
+                            const shG = ctx.createLinearGradient(
+                                cx2,
+                                cy2,
+                                cx2,
+                                cy2 + ps * 0.4,
+                            );
+                            shG.addColorStop(0, "rgba(255,255,255,0.6)");
+                            shG.addColorStop(1, "rgba(255,255,255,0)");
+                            ctx.fillStyle = shG;
+                            roundRect2(
+                                cx2 + 1.5,
+                                cy2 + 1.5,
+                                ps - 3,
+                                ps * 0.4,
+                                1.5,
+                            );
+                            ctx.fill();
+                            ctx.globalAlpha = 1;
+                        }
+                ctx.strokeStyle = "rgba(255,255,255,0.08)";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(0, 0, cw, ch);
+            }
+
+            function updateUI() {
+                document.getElementById("scoreValue").textContent =
+                    G.score.toLocaleString(getLoc());
+                document.getElementById("levelValue").textContent = G.level;
+                document.getElementById("linesValue").textContent = G.lines;
+            }
+            function updateLeaderboardDOM() {
+                const lb = loadLeaderboard(),
+                    loc = getLoc(),
+                    box = document.getElementById("leaderboardBox");
+                if (lb.length === 0) {
+                    box.innerHTML =
+                        '<p style="font-size:0.6rem;text-align:center;padding:8px 0;color:#444">' +
+                        t("noRecords") +
+                        "</p>";
+                } else {
+                    let html =
+                        "<table><thead><tr><th>" +
+                        t("lbNum") +
+                        "</th><th>" +
+                        t("lbScore") +
+                        '</th><th style="text-align:right">' +
+                        t("lbLevel") +
+                        "</th></tr></thead><tbody>";
+                    for (let i = 0; i < lb.length; i++)
+                        html +=
+                            "<tr" +
+                            (i === G.highlightIdx ? ' class="highlight"' : "") +
+                            "><td>" +
+                            (i + 1) +
+                            "</td><td>" +
+                            lb[i].score.toLocaleString(loc) +
+                            '</td><td style="text-align:right">' +
+                            lb[i].level +
+                            "</td></tr>";
+                    box.innerHTML = html + "</tbody></table>";
+                }
+            }
+            function updateGameoverLeaderboard() {
+                const lb = loadLeaderboard(),
+                    loc = getLoc(),
+                    box = document.getElementById("goLeaderboard");
+                if (lb.length === 0) {
+                    box.innerHTML = "";
+                    return;
+                }
+                let html =
+                    "<table><thead><tr><th>" +
+                    t("lbNum") +
+                    "</th><th>" +
+                    t("lbScore") +
+                    "</th><th>" +
+                    t("lbLevel") +
+                    "</th><th>" +
+                    t("lbLines") +
+                    '</th><th style="text-align:right">' +
+                    t("lbDate") +
+                    "</th></tr></thead><tbody>";
+                for (let i = 0; i < lb.length; i++)
+                    html +=
+                        "<tr" +
+                        (i === G.highlightIdx ? ' class="highlight"' : "") +
+                        "><td>" +
+                        (i + 1) +
+                        "</td><td>" +
+                        lb[i].score.toLocaleString(loc) +
+                        "</td><td>" +
+                        lb[i].level +
+                        "</td><td>" +
+                        lb[i].lines +
+                        '</td><td style="text-align:right">' +
+                        lb[i].date +
+                        "</td></tr>";
+                box.innerHTML = html + "</tbody></table>";
+            }
+            function setOverlay(type) {
+                G.overlay = type;
+                startOverlay.style.display = type === "start" ? "flex" : "none";
+                gameoverOverlay.style.display =
+                    type === "gameover" ? "flex" : "none";
+                pauseOverlay.style.display = type === "pause" ? "flex" : "none";
+            }
+            function showBonusPopup(text) {
+                bonusPopup.textContent = text;
+                bonusPopup.style.display = "block";
+                if (G.bonusTimer) clearTimeout(G.bonusTimer);
+                G.bonusTimer = setTimeout(() => {
+                    bonusPopup.style.display = "none";
+                    G.bonusTimer = null;
+                }, 2000);
+            }
+            function renderTitle() {
+                const titleStr = t("title");
+                titleRow.innerHTML = "";
+                for (let li = 0; li < titleStr.length; li++) {
+                    const char = titleStr[li],
+                        map = PIXEL_MAPS[char],
+                        co = TITLE_PIECE_COLORS[li % TITLE_PIECE_COLORS.length];
+                    if (!map) {
+                        const span = document.createElement("span");
+                        span.style.cssText = "color:#c8a8e8;font-size:2rem";
+                        span.textContent = char;
+                        titleRow.appendChild(span);
+                        continue;
+                    }
+                    const div = document.createElement("div");
+                    div.className = "title-letter";
+                    const flat = map.flat();
+                    for (let ci = 0; ci < flat.length; ci++) {
+                        const px = document.createElement("div");
+                        px.className = "px";
+                        if (flat[ci]) {
+                            px.style.background =
+                                "linear-gradient(180deg, " +
+                                co.light +
+                                " 0%, " +
+                                co.base +
+                                " 35%, " +
+                                co.mid +
+                                " 70%, " +
+                                co.dark +
+                                " 100%)";
+                            px.style.boxShadow =
+                                "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.25)";
+                        } else {
+                            px.style.background = "transparent";
+                        }
+                        div.appendChild(px);
+                    }
+                    titleRow.appendChild(div);
+                }
+            }
+            function updateLocalization() {
+                document.getElementById("recordsLabel").textContent =
+                    t("records");
+                document.getElementById("nextLabel").textContent = t("next");
+                document.getElementById("scoreLabel").textContent = t("score");
+                document.getElementById("levelLabel").textContent = t("level");
+                document.getElementById("linesLabel").textContent = t("lines");
+                document.getElementById("controlsLabel").textContent =
+                    t("controls");
+                document.getElementById("ctrlMove").textContent = t("ctrlMove");
+                document.getElementById("ctrlRotate").textContent =
+                    t("ctrlRotate");
+                document.getElementById("ctrlSoft").textContent = t("ctrlSoft");
+                document.getElementById("ctrlHard").textContent = t("ctrlHard");
+                document.getElementById("ctrlPause").textContent =
+                    t("ctrlPause");
+                document.getElementById("startBtn").textContent = t("play");
+                document.getElementById("restartBtn").textContent =
+                    t("restart");
+                document.getElementById("goTitle").textContent = t("gameOver");
+                document.getElementById("pauseTitle").textContent = t("pause");
+                document.getElementById("pauseHint").textContent =
+                    t("hintResume");
+                document.getElementById("langBtn").textContent =
+                    G.lang === "ru" ? "EN" : "RU";
+                renderTitle();
+                updateLeaderboardDOM();
+                updateUI();
+            }
+
+            function clearDropTimer() {
+                if (G.dropTimer) {
+                    clearTimeout(G.dropTimer);
+                    G.dropTimer = null;
+                }
+            }
+            function clearLockTimer() {
+                if (G.lockTimer) {
+                    clearTimeout(G.lockTimer);
+                    G.lockTimer = null;
+                }
+            }
+            function getSpeed() {
+                return G.level >= LEVEL_SPEEDS.length
+                    ? LEVEL_SPEEDS[LEVEL_SPEEDS.length - 1]
+                    : LEVEL_SPEEDS[G.level];
+            }
+            function startLockDelayTimer() {
+                clearLockTimer();
+                G.lockTimer = setTimeout(() => {
+                    G.lockTimer = null;
+                    if (G.currentPiece && onGround(G.board, G.currentPiece)) {
+                        if (!lockPieceFn()) {
+                            drawNext();
+                            updateUI();
+                            if (!G.gameOver) scheduleDrop();
+                        }
+                    } else {
+                        G.lockDelayActive = false;
+                        G.lockResets = 0;
+                    }
+                }, LOCK_DELAY);
+            }
+            function invalidateGhostCache() {
+                G.cachedGhostY = G.currentPiece
+                    ? ghostY(G.board, G.currentPiece)
+                    : -1;
+            }
+
+            let partCount = 0;
+            const MAX_PARTICLES = 600;
+            const partArr = new Float32Array(MAX_PARTICLES * 7),
+                partVel = new Float32Array(MAX_PARTICLES * 2),
+                partDecay = new Float32Array(MAX_PARTICLES);
+            function hslToRgb(h, s, l) {
+                let r, g, b;
+                if (s === 0) r = g = b = l;
+                else {
+                    const hue2rgb = (p, q, t) => {
+                        if (t < 0) t += 1;
+                        if (t > 1) t -= 1;
+                        if (t < 1 / 6) return p + (q - p) * 6 * t;
+                        if (t < 1 / 2) return q;
+                        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                        return p;
+                    };
+                    const q = l < 0.5 ? l * (1 + s) : l + s - l * s,
+                        p = 2 * l - q;
+                    r = hue2rgb(p, q, h + 1 / 3);
+                    g = hue2rgb(p, q, h);
+                    b = hue2rgb(p, q, h - 1 / 3);
+                }
+                return [
+                    Math.round(r * 255),
+                    Math.round(g * 255),
+                    Math.round(b * 255),
+                ];
+            }
+            function createPerfectClearParticles() {
+                for (let i = 0; i < 50 && partCount < MAX_PARTICLES; i++) {
+                    const angle = Math.random() * Math.PI * 2,
+                        speed = 4 + Math.random() * 7,
+                        rgb = hslToRgb(Math.random(), 0.7, 0.8),
+                        idx = partCount;
+                    partArr[idx * 7] = BW / 2;
+                    partArr[idx * 7 + 1] = BH / 2;
+                    partArr[idx * 7 + 2] = 1.5 + Math.random() * 2.5;
+                    partArr[idx * 7 + 3] = rgb[0] / 255;
+                    partArr[idx * 7 + 4] = rgb[1] / 255;
+                    partArr[idx * 7 + 5] = rgb[2] / 255;
+                    partArr[idx * 7 + 6] = 1;
+                    partVel[idx * 2] = Math.cos(angle) * speed;
+                    partVel[idx * 2 + 1] = Math.sin(angle) * speed;
+                    partDecay[idx] = 0.035 + Math.random() * 0.025;
+                    partCount++;
+                }
+                for (let i = 0; i < 25 && partCount < MAX_PARTICLES; i++) {
+                    const angle = (i / 25) * Math.PI * 2,
+                        speed = 5 + Math.random() * 3,
+                        idx = partCount;
+                    partArr[idx * 7] = BW / 2;
+                    partArr[idx * 7 + 1] = BH / 2;
+                    partArr[idx * 7 + 2] = 1.5;
+                    partArr[idx * 7 + 3] = 1;
+                    partArr[idx * 7 + 4] = 1;
+                    partArr[idx * 7 + 5] = 1;
+                    partArr[idx * 7 + 6] = 1;
+                    partVel[idx * 2] = Math.cos(angle) * speed;
+                    partVel[idx * 2 + 1] = Math.sin(angle) * speed;
+                    partDecay[idx] = 0.04;
+                    partCount++;
+                }
+            }
+            function updateParticles() {
+                for (let i = 0; i < partCount; i++) {
+                    partArr[i * 7] += partVel[i * 2];
+                    partArr[i * 7 + 1] += partVel[i * 2 + 1];
+                    partVel[i * 2 + 1] += 0.1;
+                    partVel[i * 2] *= 0.98;
+                    partArr[i * 7 + 6] -= partDecay[i];
+                    if (partArr[i * 7 + 6] <= 0) {
+                        partCount--;
+                        if (i < partCount) {
+                            for (let j = 0; j < 7; j++)
+                                partArr[i * 7 + j] = partArr[partCount * 7 + j];
+                            partVel[i * 2] = partVel[partCount * 2];
+                            partVel[i * 2 + 1] = partVel[partCount * 2 + 1];
+                            partDecay[i] = partDecay[partCount];
+                            i--;
+                        }
+                    }
+                }
+            }
+
+            function spawnPiece() {
+                const np = createPiece(G.nextPiece);
+                G.nextPiece = randomPiece(G.pieceBag);
+                if (!isValid(G.board, np)) {
+                    G.currentPiece = np;
+                    G.gameOver = true;
+                    if (G.score > 0) {
+                        const result = addScoreToLeaderboard(
+                            G.score,
+                            G.level,
+                            G.lines,
+                        );
+                        G.highlightIdx = result.highlightIdx;
+                    }
+                    document.getElementById("goScore").textContent =
+                        t("scoreLabel") + G.score.toLocaleString(getLoc());
+                    if (G.totalBonus > 0)
+                        showBonusPopup(
+                            t("bonusLabel") +
+                                G.totalBonus.toLocaleString(getLoc()),
+                        );
+                    setOverlay("gameover");
+                    updateGameoverLeaderboard();
+                    updateLeaderboardDOM();
+                    requestRender();
+                    return;
+                }
+                G.currentPiece = np;
+                G.lockDelayActive = false;
+                G.lockResets = 0;
+                invalidateGhostCache();
+            }
+
+            function lockPieceFn() {
+                if (!G.currentPiece) return false;
+                G.board = placePiece(G.board, G.currentPiece);
+                const cl = getCompletedLines(G.board);
+                if (cl.length > 0) {
+                    G.clearingLines = cl;
+                    G.clearingLineSet = new Set(cl);
+                    G.removingStart = performance.now();
+                    G.currentPiece = null;
+                    G.lockDelayActive = false;
+                    G.lockResets = 0;
+                    G.cachedGhostY = -1;
+                    requestRender();
+                    G.clearTimer = setTimeout(() => {
+                        G.clearTimer = null;
+                        G.board = removeLines(G.board, G.clearingLines);
+                        const lc = G.clearingLines.length,
+                            clearScore =
+                                (lc < LINE_SCORES.length
+                                    ? LINE_SCORES[lc]
+                                    : LINE_SCORES[LINE_SCORES.length - 1]) *
+                                (G.level + 1);
+                        G.score += clearScore;
+                        G.lines += lc;
+                        G.level = Math.floor(G.lines / 10);
+                        if (isBoardEmpty(G.board)) {
+                            const bonus = PERFECT_CLEAR_BONUS * (G.level + 1);
+                            G.score += bonus;
+                            G.totalBonus += bonus;
+                            createPerfectClearParticles();
+                            showBonusPopup(
+                                t("perfectClear") +
+                                    bonus.toLocaleString(getLoc()),
+                            );
+                        } else if (lc >= 4)
+                            showBonusPopup(
+                                t("tetrisBonus") +
+                                    clearScore.toLocaleString(getLoc()),
+                            );
+                        G.clearingLines = [];
+                        G.clearingLineSet = null;
+                        updateUI();
+                        spawnPiece();
+                        drawNext();
+                        requestRender();
+                        if (!G.gameOver) scheduleDrop();
+                    }, CLEAR_DURATION);
+                    return true;
+                }
+                spawnPiece();
+                return false;
+            }
+
+            function scheduleDrop() {
+                clearDropTimer();
+                if (
+                    !G.started ||
+                    G.gameOver ||
+                    G.paused ||
+                    !G.currentPiece ||
+                    G.clearingLines.length > 0
+                )
+                    return;
+                G.dropTimer = setTimeout(() => {
+                    G.dropTimer = null;
+                    moveDown();
+                }, getSpeed());
+            }
+
+            function moveDown(isManual) {
+                if (
+                    G.gameOver ||
+                    G.paused ||
+                    !G.currentPiece ||
+                    G.clearingLines.length > 0
+                )
+                    return;
+                const moved = { ...G.currentPiece, y: G.currentPiece.y + 1 };
+                if (isValid(G.board, moved)) {
+                    G.currentPiece = moved;
+                    if (isManual) G.score += 1;
+                    invalidateGhostCache();
+                    requestRender();
+                    const og = onGround(G.board, moved);
+                    if (og && !G.lockDelayActive) {
+                        G.lockDelayActive = true;
+                        G.lockResets = 0;
+                        startLockDelayTimer();
+                    } else if (!og && G.lockDelayActive) {
+                        clearLockTimer();
+                        G.lockDelayActive = false;
+                        G.lockResets = 0;
+                    }
+                    scheduleDrop();
+                } else {
+                    if (!G.lockDelayActive) {
+                        G.lockDelayActive = true;
+                        G.lockResets = 0;
+                        startLockDelayTimer();
+                    }
+                }
+            }
+
+            function moveLeft() {
+                if (
+                    G.gameOver ||
+                    G.paused ||
+                    !G.currentPiece ||
+                    G.clearingLines.length > 0
+                )
+                    return;
+                const moved = { ...G.currentPiece, x: G.currentPiece.x - 1 };
+                if (isValid(G.board, moved)) {
+                    handleMoveResult(moved);
+                    requestRender();
+                }
+            }
+            function moveRight() {
+                if (
+                    G.gameOver ||
+                    G.paused ||
+                    !G.currentPiece ||
+                    G.clearingLines.length > 0
+                )
+                    return;
+                const moved = { ...G.currentPiece, x: G.currentPiece.x + 1 };
+                if (isValid(G.board, moved)) {
+                    handleMoveResult(moved);
+                    requestRender();
+                }
+            }
+            function rotatePiece() {
+                if (
+                    G.gameOver ||
+                    G.paused ||
+                    !G.currentPiece ||
+                    G.clearingLines.length > 0
+                )
+                    return;
+                const rotated = tryRotate(G.board, G.currentPiece);
+                if (rotated) {
+                    handleMoveResult(rotated);
+                    requestRender();
+                }
+            }
+            function completeHdAnimNow() {
+                if (!G.hdAnim) return;
+                const finalPiece = { ...G.hdAnim.piece, y: G.hdAnim.endY };
+                G.hdAnim = null;
+                G.currentPiece = finalPiece;
+                if (!lockPieceFn()) {
+                    drawNext();
+                    updateUI();
+                    requestRender();
+                    if (!G.gameOver) scheduleDrop();
+                }
+            }
+            function hardDrop() {
+                if (G.gameOver || G.paused || G.clearingLines.length > 0)
+                    return;
+                completeHdAnimNow();
+                if (!G.currentPiece) return;
+                clearLockTimer();
+                clearDropTimer();
+                const gy = ghostY(G.board, G.currentPiece),
+                    dist = gy - G.currentPiece.y;
+                if (dist <= 0) {
+                    G.currentPiece = { ...G.currentPiece, y: gy };
+                    G.lockDelayActive = false;
+                    G.lockResets = 0;
+                    if (!lockPieceFn()) {
+                        drawNext();
+                        updateUI();
+                        if (!G.gameOver) scheduleDrop();
+                    }
+                    return;
+                }
+                G.score += dist * 2;
+                G.hdAnim = {
+                    startY: G.currentPiece.y,
+                    endY: gy,
+                    startTime: performance.now(),
+                    piece: { ...G.currentPiece },
+                    duration: Math.min(40 + dist * 12, 200),
+                };
+                G.currentPiece = null;
+                G.lockDelayActive = false;
+                G.lockResets = 0;
+                requestRender();
+            }
+
+            function handleMoveResult(moved) {
+                const og = onGround(G.board, moved);
+                G.currentPiece = moved;
+                if (G.lockDelayActive) {
+                    if (og) {
+                        if (G.lockResets < MAX_LOCK_RESETS) {
+                            clearLockTimer();
+                            startLockDelayTimer();
+                            G.lockResets++;
+                        }
+                    } else {
+                        clearLockTimer();
+                        G.lockDelayActive = false;
+                        G.lockResets = 0;
+                        scheduleDrop();
+                    }
+                } else {
+                    if (og) {
+                        G.lockDelayActive = true;
+                        G.lockResets = 0;
+                        startLockDelayTimer();
+                    }
+                }
+                invalidateGhostCache();
+            }
+
+            function requestRender() {
+                G.needsRender = true;
+                if (!G.animId) {
+                    G.lastTime = performance.now();
+                    G.animId = requestAnimationFrame(renderLoop);
+                }
+            }
+
+            function renderLoop() {
+                const now = performance.now(),
+                    dt = now - G.lastTime;
+                G.lastTime = now;
+                updateParticles();
+                if (G.hdAnim) {
+                    if (now - G.hdAnim.startTime >= G.hdAnim.duration)
+                        completeHdAnimNow();
+                }
+                if (G.gpConnected) pollGamepad();
+                updateDAS(dt);
+                render();
+                if (
+                    partCount > 0 ||
+                    G.needsRender ||
+                    G.hdAnim ||
+                    G.gpConnected ||
+                    G.clearingLines.length > 0 ||
+                    dasActive()
+                ) {
+                    G.needsRender = false;
+                    G.animId = requestAnimationFrame(renderLoop);
+                } else G.animId = null;
+            }
+
+            const DAS_DELAY = 170,
+                DAS_RATE = 50;
+            let keyState = {
+                left: { active: false, t: 0, trig: false },
+                right: { active: false, t: 0, trig: false },
+                down: { active: false, t: 0, trig: false },
+            };
+            function dasActive() {
+                return (
+                    keyState.left.active ||
+                    keyState.right.active ||
+                    keyState.down.active
+                );
+            }
+
+            function updateDAS(dt) {
+                if (dt > 100) dt = 100;
+                for (const k in keyState) {
+                    const st = keyState[k];
+                    if (st.active) {
+                        st.t += dt;
+                        if (!st.trig) {
+                            if (st.t >= DAS_DELAY) {
+                                st.trig = true;
+                                st.t -= DAS_DELAY;
+                                if (k === "left") moveLeft();
+                                else if (k === "right") moveRight();
+                                else if (k === "down") moveDown(true);
+                            }
+                        }
+                        if (st.trig) {
+                            while (st.t >= DAS_RATE) {
+                                st.t -= DAS_RATE;
+                                if (k === "left") moveLeft();
+                                else if (k === "right") moveRight();
+                                else if (k === "down") moveDown(true);
+                            }
+                        }
+                    }
+                }
+            }
+
+            function handleKeyDown(e) {
+                if (!G.started || G.gameOver || e.repeat) return;
+                switch (e.key) {
+                    case "ArrowLeft":
+                    case "a":
+                        e.preventDefault();
+                        if (!keyState.left.active) {
+                            keyState.left.active = true;
+                            keyState.left.t = 0;
+                            keyState.left.trig = false;
+                            moveLeft();
+                            requestRender();
+                        }
+                        break;
+                    case "ArrowRight":
+                    case "d":
+                        e.preventDefault();
+                        if (!keyState.right.active) {
+                            keyState.right.active = true;
+                            keyState.right.t = 0;
+                            keyState.right.trig = false;
+                            moveRight();
+                            requestRender();
+                        }
+                        break;
+                    case "ArrowDown":
+                    case "s":
+                        e.preventDefault();
+                        if (!keyState.down.active) {
+                            keyState.down.active = true;
+                            keyState.down.t = 0;
+                            keyState.down.trig = false;
+                            moveDown(true);
+                            requestRender();
+                        }
+                        break;
+                    case "ArrowUp":
+                    case "w":
+                        e.preventDefault();
+                        rotatePiece();
+                        break;
+                    case " ":
+                        e.preventDefault();
+                        hardDrop();
+                        break;
+                    case "p":
+                    case "Escape":
+                        e.preventDefault();
+                        togglePauseFn();
+                        break;
+                }
+            }
+            function handleKeyUp(e) {
+                switch (e.key) {
+                    case "ArrowLeft":
+                    case "a":
+                        keyState.left.active = false;
+                        break;
+                    case "ArrowRight":
+                    case "d":
+                        keyState.right.active = false;
+                        break;
+                    case "ArrowDown":
+                    case "s":
+                        keyState.down.active = false;
+                        break;
+                }
+            }
+            document.addEventListener("keydown", handleKeyDown);
+            document.addEventListener("keyup", handleKeyUp);
+
+            function pollGamepad() {
+                const gamepads = navigator.getGamepads
+                    ? navigator.getGamepads()
+                    : [];
+                let gp = null;
+                for (const gamepad of gamepads)
+                    if (gamepad) {
+                        gp = gamepad;
+                        break;
+                    }
+                if (!gp) {
+                    G.gpPrevState = null;
+                    return;
+                }
+                const gpJustPressed = (idx) =>
+                    (gp.buttons[idx]?.pressed || false) &&
+                    !(G.gpPrevState?.buttons[idx] || false);
+                const left =
+                        gp.buttons[14]?.pressed || false || gp.axes[0] < -0.5,
+                    right =
+                        gp.buttons[15]?.pressed || false || gp.axes[0] > 0.5,
+                    down = gp.buttons[13]?.pressed || false || gp.axes[1] > 0.5;
+
+                if (left && !keyState.left.active) {
+                    keyState.left.active = true;
+                    keyState.left.t = 0;
+                    keyState.left.trig = false;
+                    moveLeft();
+                    requestRender();
+                } else if (!left) keyState.left.active = false;
+                if (right && !keyState.right.active) {
+                    keyState.right.active = true;
+                    keyState.right.t = 0;
+                    keyState.right.trig = false;
+                    moveRight();
+                    requestRender();
+                } else if (!right) keyState.right.active = false;
+                if (down && !keyState.down.active) {
+                    keyState.down.active = true;
+                    keyState.down.t = 0;
+                    keyState.down.trig = false;
+                    moveDown(true);
+                    requestRender();
+                } else if (!down) keyState.down.active = false;
+
+                if (!G.started || G.gameOver) {
+                    if (gpJustPressed(9) || gpJustPressed(0)) startGameFn();
+                } else {
+                    for (const idx of [0, 1, 2, 3, 12])
+                        if (gpJustPressed(idx)) rotatePiece();
+                    for (const idx of [4, 5])
+                        if (gpJustPressed(idx)) hardDrop();
+                    if (gpJustPressed(9)) togglePauseFn();
+                }
+                G.gpPrevState = {
+                    buttons: Array.from(gp.buttons).map((b) => b.pressed),
+                    axes: Array.from(gp.axes),
+                };
+            }
+            window.addEventListener("gamepadconnected", () => {
+                G.gpConnected = true;
+                gpIndicator.textContent = "🎮 " + t("gamepad");
+                requestRender();
+            });
+            window.addEventListener("gamepaddisconnected", () => {
+                G.gpConnected = false;
+                G.gpPrevState = null;
+                keyState.left.active =
+                    keyState.right.active =
+                    keyState.down.active =
+                        false;
+                gpIndicator.textContent = "";
+            });
+
+            boardCanvas.addEventListener("click", () => {
+                if (!G.started || G.gameOver || G.clearingLines.length > 0)
+                    return;
+                togglePauseFn();
+            });
+            pauseOverlay.addEventListener("click", () => {
+                if (G.paused) togglePauseFn();
+            });
+
+            function startGameFn() {
+                clearDropTimer();
+                clearLockTimer();
+                if (G.clearTimer) {
+                    clearTimeout(G.clearTimer);
+                    G.clearTimer = null;
+                }
+                if (G.bonusTimer) {
+                    clearTimeout(G.bonusTimer);
+                    G.bonusTimer = null;
+                }
+                bonusPopup.style.display = "none";
+                if (G.animId) {
+                    cancelAnimationFrame(G.animId);
+                    G.animId = null;
+                }
+                keyState.left.active =
+                    keyState.right.active =
+                    keyState.down.active =
+                        false;
+                G.pieceBag = [];
+                G.board = createEmptyBoard();
+                G.nextPiece = randomPiece(G.pieceBag);
+                G.score = 0;
+                G.level = 0;
+                G.lines = 0;
+                G.gameOver = false;
+                G.paused = false;
+                G.started = true;
+                G.clearingLines = [];
+                G.clearingLineSet = null;
+                G.removingStart = 0;
+                G.lockDelayActive = false;
+                G.lockResets = 0;
+                G.cachedGhostY = -1;
+                G.totalBonus = 0;
+                G.hdAnim = null;
+                partCount = 0;
+                G.highlightIdx = -1;
+                G.lastTime = performance.now();
+                spawnPiece();
+                setOverlay(null);
+                updateUI();
+                updateLeaderboardDOM();
+                drawNext();
+                requestRender();
+                scheduleDrop();
+            }
+            function togglePauseFn() {
+                if (G.gameOver || !G.started) return;
+                G.paused = !G.paused;
+                if (G.paused) {
+                    clearDropTimer();
+                    clearLockTimer();
+                    keyState.left.active =
+                        keyState.right.active =
+                        keyState.down.active =
+                            false;
+                    setOverlay("pause");
+                } else {
+                    setOverlay(null);
+                    G.lastTime = performance.now();
+                    if (G.lockDelayActive) startLockDelayTimer();
+                    scheduleDrop();
+                    requestRender();
+                }
+            }
+
+            startBtn.addEventListener("click", startGameFn);
+            restartBtn.addEventListener("click", startGameFn);
+            document.getElementById("langBtn").addEventListener("click", () => {
+                G.lang = G.lang === "ru" ? "en" : "ru";
+                try {
+                    localStorage.setItem("tetris_lang", G.lang);
+                } catch (e) {}
+                updateLocalization();
+            });
+
+            boardCanvas.addEventListener("webglcontextlost", (e) => {
+                e.preventDefault();
+                if (G.animId) cancelAnimationFrame(G.animId);
+            });
+            boardCanvas.addEventListener("webglcontextrestored", () => {
+                initWebGL();
+                requestRender();
+            });
+
+            updateLocalization();
+            setOverlay("start");
+            initWebGL();
+            render();
+            drawNext();
+        </script>
+        <script>
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                    navigator.serviceWorker
+                        .register("./sw.js")
+                        .then((reg) =>
+                            console.log("SW зарегистрирован:", reg.scope),
+                        )
+                        .catch((err) => console.error("Ошибка SW:", err));
+                });
+            }
+        </script>
+    </body>
+</html>
