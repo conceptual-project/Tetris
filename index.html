@@ -3,6 +3,13 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0d0d0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tetris">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
         <title>Tetris</title>
         <style>
             * {
@@ -53,9 +60,7 @@
                 letter-spacing: 0.08em;
                 padding: 6px 0;
                 cursor: pointer;
-                transition:
-                    background 0.15s,
-                    color 0.15s;
+                transition: background 0.15s, color 0.15s;
                 text-align: center;
             }
             .tbtn:hover {
@@ -304,17 +309,7 @@
             </div>
             <div class="right-panel">
                 <div class="btn-row">
-                    <button class="tbtn" id="pauseBtn">
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="16"
-                            height="16"
-                            fill="currentColor"
-                        >
-                            <rect x="6" y="4" width="4" height="16" rx="1" />
-                            <rect x="14" y="4" width="4" height="16" rx="1" />
-                        </svg>
-                    </button>
+                    <button class="tbtn" id="pauseBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
                     <button class="tbtn" id="langBtn">EN</button>
                     <button class="tbtn" id="soundBtn"></button>
                 </div>
@@ -339,6 +334,7 @@
                     <div class="label" id="linesLabel"></div>
                     <div class="value green" id="linesValue">0</div>
                 </div>
+
             </div>
         </div>
         <script>
@@ -353,49 +349,42 @@
                     light: "#d0eef8",
                     mid: "#88c8dc",
                     dark: "#68a8bc",
-                    glow: [168, 216, 234],
                 },
                 O: {
                     base: "#fce4a8",
                     light: "#fef0cc",
                     mid: "#f0d080",
                     dark: "#d4b058",
-                    glow: [252, 228, 168],
                 },
                 T: {
                     base: "#d4b8e8",
                     light: "#e8d4f4",
                     mid: "#b898d0",
                     dark: "#9878b0",
-                    glow: [212, 184, 232],
                 },
                 S: {
                     base: "#b8e8c8",
                     light: "#d4f4e0",
                     mid: "#90d0a8",
                     dark: "#70b088",
-                    glow: [184, 232, 200],
                 },
                 Z: {
                     base: "#f0b8c0",
                     light: "#f8d4d8",
                     mid: "#e09098",
                     dark: "#c87078",
-                    glow: [240, 184, 192],
                 },
                 J: {
                     base: "#b8c8f0",
                     light: "#d4dcf8",
                     mid: "#90a8d8",
                     dark: "#7088b8",
-                    glow: [184, 200, 240],
                 },
                 L: {
                     base: "#f0d0b0",
                     light: "#f8e4cc",
                     mid: "#e0b088",
                     dark: "#c89068",
-                    glow: [240, 208, 176],
                 },
             };
             const PIXEL_MAPS = {
@@ -644,7 +633,7 @@
             const LOCK_DELAY = 500,
                 MAX_LOCK_RESETS = 15,
                 CLEAR_DURATION = 175;
-            const SOUND_KEY = "tetris_sound";
+            const SOUND_KEY = 'tetris_sound';
 
             // ═══════════════════════════════════════════
             // SOUND SYSTEM (from cubefall)
@@ -652,18 +641,10 @@
             let audioCtx = null;
 
             function createAudioCtx() {
-                try {
-                    audioCtx = new (
-                        window.AudioContext || window.webkitAudioContext
-                    )();
-                } catch (e) {
-                    audioCtx = null;
-                    G.soundOn = false;
-                }
+                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { audioCtx = null; G.soundOn = false; }
                 if (audioCtx) {
-                    audioCtx.onstatechange = function () {
-                        if (audioCtx && audioCtx.state === "interrupted")
-                            audioCtx.resume().catch(function () {});
+                    audioCtx.onstatechange = function() {
+                        if (audioCtx && audioCtx.state === 'interrupted') audioCtx.resume().catch(function(){});
                     };
                 }
             }
@@ -673,141 +654,58 @@
                     createAudioCtx();
                 }
                 if (audioCtx) {
-                    if (
-                        audioCtx.state === "suspended" ||
-                        audioCtx.state === "interrupted"
-                    ) {
-                        audioCtx.resume().catch(function () {});
-                    } else if (audioCtx.state === "closed") {
-                        audioCtx = null;
-                        createAudioCtx();
+                    if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+                        audioCtx.resume().catch(function(){});
+                    } else if (audioCtx.state === 'closed') {
+                        audioCtx = null; createAudioCtx();
                     }
                 }
             }
 
             function playTone(freq, duration, volume, type) {
                 if (!G.soundOn) return;
-                if (!audioCtx || audioCtx.state === "closed") {
-                    audioCtx = null;
-                    createAudioCtx();
-                }
+                if (!audioCtx || audioCtx.state === 'closed') { audioCtx = null; createAudioCtx(); }
                 if (!audioCtx) return;
-                if (
-                    audioCtx.state === "suspended" ||
-                    audioCtx.state === "interrupted"
-                ) {
-                    audioCtx.resume().catch(function () {});
+                if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+                    audioCtx.resume().catch(function(){});
                 }
                 try {
-                    var osc = audioCtx.createOscillator(),
-                        gain = audioCtx.createGain();
-                    osc.type = type || "sine";
-                    osc.frequency.value = freq;
+                    var osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                    osc.type = type || 'sine'; osc.frequency.value = freq;
                     var v = Math.min(volume, 0.3);
                     gain.gain.setValueAtTime(v, audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(
-                        0.001,
-                        audioCtx.currentTime + duration,
-                    );
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(audioCtx.currentTime);
-                    osc.stop(audioCtx.currentTime + duration);
-                } catch (e) {
-                    audioCtx = null;
-                    createAudioCtx();
-                }
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + duration);
+                } catch(e) { audioCtx = null; createAudioCtx(); }
             }
 
             // Resume audio after system wake-up or tab focus
-            document.addEventListener("visibilitychange", function () {
+            document.addEventListener('visibilitychange', function() {
                 if (!document.hidden) initAudio();
             });
-            window.addEventListener("pageshow", function () {
-                initAudio();
-            });
+            window.addEventListener('pageshow', function() { initAudio(); });
 
             var sfx = {
-                move: function () {
-                    playTone(250, 0.04, 0.04, "sine");
-                },
-                rotate: function () {
-                    playTone(400, 0.06, 0.06, "sine");
-                    setTimeout(function () {
-                        playTone(500, 0.06, 0.05, "sine");
-                    }, 30);
-                },
-                softDrop: function () {
-                    playTone(200, 0.05, 0.04, "triangle");
-                },
-                hardDrop: function () {
-                    playTone(150, 0.12, 0.1, "triangle");
-                    setTimeout(function () {
-                        playTone(100, 0.08, 0.06, "sine");
-                    }, 40);
-                },
-                land: function () {
-                    playTone(200, 0.1, 0.08, "triangle");
-                },
-                clear: function (n) {
-                    var base = 523 + Math.min(n, 15) * 30;
-                    playTone(base, 0.2, 0.1, "sine");
-                    setTimeout(function () {
-                        playTone(base * 1.25, 0.15, 0.08, "sine");
-                    }, 50);
-                    if (n >= 4)
-                        setTimeout(function () {
-                            playTone(base * 1.5, 0.12, 0.06, "sine");
-                        }, 100);
-                },
-                perfectClear: function () {
-                    playTone(523, 0.15, 0.12, "sine");
-                    setTimeout(function () {
-                        playTone(659, 0.15, 0.12, "sine");
-                    }, 100);
-                    setTimeout(function () {
-                        playTone(784, 0.15, 0.1, "sine");
-                    }, 200);
-                    setTimeout(function () {
-                        playTone(1047, 0.25, 0.14, "sine");
-                    }, 300);
-                },
-                gameOver: function () {
-                    playTone(440, 0.3, 0.1, "sine");
-                    setTimeout(function () {
-                        playTone(370, 0.3, 0.08, "sine");
-                    }, 200);
-                    setTimeout(function () {
-                        playTone(330, 0.5, 0.06, "sine");
-                    }, 400);
-                },
-                start: function () {
-                    playTone(523, 0.15, 0.1, "sine");
-                    setTimeout(function () {
-                        playTone(659, 0.15, 0.1, "sine");
-                    }, 100);
-                    setTimeout(function () {
-                        playTone(784, 0.2, 0.12, "sine");
-                    }, 200);
-                },
-                hold: function () {
-                    playTone(440, 0.06, 0.08, "sine");
-                    setTimeout(function () {
-                        playTone(550, 0.06, 0.06, "sine");
-                    }, 40);
-                },
+                move: function() { playTone(250, 0.04, 0.04, 'sine'); },
+                rotate: function() { playTone(400, 0.06, 0.06, 'sine'); setTimeout(function(){ playTone(500, 0.06, 0.05, 'sine') }, 30); },
+                softDrop: function() { playTone(200, 0.05, 0.04, 'triangle'); },
+                hardDrop: function() { playTone(150, 0.12, 0.1, 'triangle'); setTimeout(function(){ playTone(100, 0.08, 0.06, 'sine') }, 40); },
+                land: function() { playTone(200, 0.1, 0.08, 'triangle'); },
+                clear: function(n) { var base=523+Math.min(n,15)*30; playTone(base, 0.2, 0.1, 'sine'); setTimeout(function(){ playTone(base*1.25, 0.15, 0.08, 'sine') }, 50); if(n>=4) setTimeout(function(){ playTone(base*1.5, 0.12, 0.06, 'sine') }, 100); },
+                perfectClear: function() { playTone(523, 0.15, 0.12, 'sine'); setTimeout(function(){ playTone(659, 0.15, 0.12, 'sine') }, 100); setTimeout(function(){ playTone(784, 0.15, 0.1, 'sine') }, 200); setTimeout(function(){ playTone(1047, 0.25, 0.14, 'sine') }, 300); },
+                gameOver: function() { playTone(440, 0.3, 0.1, 'sine'); setTimeout(function(){ playTone(370, 0.3, 0.08, 'sine') }, 200); setTimeout(function(){ playTone(330, 0.5, 0.06, 'sine') }, 400); },
+                start: function() { playTone(523, 0.15, 0.1, 'sine'); setTimeout(function(){ playTone(659, 0.15, 0.1, 'sine') }, 100); setTimeout(function(){ playTone(784, 0.2, 0.12, 'sine') }, 200); },
             };
 
             function updateSoundBtn() {
-                var btn = document.getElementById("soundBtn");
+                var btn = document.getElementById('soundBtn');
                 if (G.soundOn) {
-                    btn.className = "tbtn sound-on";
-                    btn.innerHTML =
-                        '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></span>';
+                    btn.className = 'tbtn sound-on';
+                    btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></span>';
                 } else {
-                    btn.className = "tbtn sound-off";
-                    btn.innerHTML =
-                        '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></span>';
+                    btn.className = 'tbtn sound-off';
+                    btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></span>';
                 }
             }
             const LOC = {
@@ -820,8 +718,6 @@
                 score: { ru: "Счёт", en: "Score" },
                 level: { ru: "Уровень", en: "Level" },
                 lines: { ru: "Линии", en: "Lines" },
-                controls: { ru: "Управление", en: "Controls" },
-                records: { ru: "Рекорды", en: "Records" },
                 hintResume: {
                     ru: "Коснись чтобы продолжить",
                     en: "Tap to resume",
@@ -834,7 +730,6 @@
                     en: "PERFECT CLEAR! +",
                 },
                 tetrisBonus: { ru: "БОНУС! +", en: "BONUS! +" },
-                noRecords: { ru: "Пока нет рекордов", en: "No records yet" },
                 lbNum: { ru: "№", en: "#" },
                 lbScore: { ru: "Счёт", en: "Score" },
                 lbLevel: { ru: "Ур.", en: "Lv." },
@@ -1036,13 +931,7 @@
                 gpConnected: false,
                 gpPrevState: null,
                 lang: "ru",
-                soundOn: (function () {
-                    try {
-                        if (localStorage.getItem(SOUND_KEY) === "off")
-                            return false;
-                    } catch (e) {}
-                    return true;
-                })(),
+                soundOn: (function(){ try{ if(localStorage.getItem(SOUND_KEY)==='off') return false }catch(e){} return true })(),
                 overlay: "start",
                 highlightIdx: -1,
                 lastTime: performance.now(),
@@ -1152,7 +1041,12 @@
                 ctx.stroke();
                 const shineH = cs * 0.38;
                 ctx.globalAlpha = 0.45;
-                const shG = ctx.createLinearGradient(px, py, px, py + shineH);
+                const shG = ctx.createLinearGradient(
+                    px,
+                    py,
+                    px,
+                    py + shineH,
+                );
                 shG.addColorStop(0, "rgba(255,255,255,0.7)");
                 shG.addColorStop(1, "rgba(255,255,255,0)");
                 ctx.fillStyle = shG;
@@ -1260,7 +1154,10 @@
                 for (let r = 0; r < ROWS; r++)
                     for (let c = 0; c < COLS; c++) {
                         if (G.board[r][c] !== null) {
-                            if (G.clearingLineSet && G.clearingLineSet.has(r)) {
+                            if (
+                                G.clearingLineSet &&
+                                G.clearingLineSet.has(r)
+                            ) {
                                 // Animate: shrink + fade
                                 boardCtx.save();
                                 boardCtx.globalAlpha = 1 - clearT;
@@ -1383,13 +1280,7 @@
                         if (pa <= 0) continue;
                         boardCtx.globalAlpha = pa;
                         const colStr =
-                            "rgb(" +
-                            (pr | 0) +
-                            "," +
-                            (pg | 0) +
-                            "," +
-                            (pb | 0) +
-                            ")";
+                            "rgb(" + (pr | 0) + "," + (pg | 0) + "," + (pb | 0) + ")";
                         boardCtx.fillStyle = colStr;
                         boardCtx.shadowColor = colStr;
                         boardCtx.shadowBlur = psz;
@@ -1407,19 +1298,6 @@
                 const ps = 18,
                     cw = nextCanvas.width,
                     ch = nextCanvas.height;
-                function roundRect2(x, y, w, h, r) {
-                    ctx.beginPath();
-                    ctx.moveTo(x + r, y);
-                    ctx.lineTo(x + w - r, y);
-                    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-                    ctx.lineTo(x + w, y + h - r);
-                    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                    ctx.lineTo(x + r, y + h);
-                    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-                    ctx.lineTo(x, y + r);
-                    ctx.quadraticCurveTo(x, y, x + r, y);
-                    ctx.closePath();
-                }
                 const bgG = ctx.createLinearGradient(0, 0, 0, ch);
                 bgG.addColorStop(0, "#0e0e18");
                 bgG.addColorStop(1, "#0a0a10");
@@ -1458,7 +1336,7 @@
                             grad.addColorStop(0.7, co.mid);
                             grad.addColorStop(1, co.dark);
                             ctx.fillStyle = grad;
-                            roundRect2(cx2 + 0.5, cy2 + 0.5, ps - 1, ps - 1, 2);
+                            roundRect(ctx, cx2 + 0.5, cy2 + 0.5, ps - 1, ps - 1, 2);
                             ctx.fill();
                             ctx.globalAlpha = 0.4;
                             const shG = ctx.createLinearGradient(
@@ -1470,7 +1348,7 @@
                             shG.addColorStop(0, "rgba(255,255,255,0.6)");
                             shG.addColorStop(1, "rgba(255,255,255,0)");
                             ctx.fillStyle = shG;
-                            roundRect2(
+                            roundRect(ctx,
                                 cx2 + 1.5,
                                 cy2 + 1.5,
                                 ps - 3,
@@ -1837,10 +1715,7 @@
                 const moved = { ...G.currentPiece, y: G.currentPiece.y + 1 };
                 if (isValid(G.board, moved)) {
                     G.currentPiece = moved;
-                    if (isManual) {
-                        G.score += 1;
-                        sfx.softDrop();
-                    }
+                    if (isManual) { G.score += 1; sfx.softDrop(); }
                     invalidateGhostCache();
                     requestRender();
                     const og = onGround(G.board, moved);
@@ -1923,8 +1798,9 @@
                 if (G.gameOver || G.paused || G.clearingLines.length > 0)
                     return;
                 sfx.hardDrop();
+                const hadAnim = !!G.hdAnim;
                 completeHdAnimNow();
-                if (!G.currentPiece) return;
+                if (hadAnim || !G.currentPiece) return;
                 clearLockTimer();
                 clearDropTimer();
                 const gy = ghostY(G.board, G.currentPiece),
@@ -2050,7 +1926,7 @@
                 }
             }
             function handleKeyDown(e) {
-                if (!G.started || G.gameOver || e.repeat) return;
+                if (!G.started || G.gameOver || G.paused || e.repeat) return;
                 initAudio();
                 switch (e.key) {
                     case "ArrowLeft":
@@ -2095,6 +1971,7 @@
                         e.preventDefault();
                         hardDrop();
                         break;
+
                 }
             }
             function handleKeyUp(e) {
@@ -2186,18 +2063,13 @@
                         false;
                 gpIndicator.textContent = "";
             });
-            boardCanvas.addEventListener("click", () => {
-                // Canvas click no longer toggles pause (use pause button)
-            });
             pauseOverlay.addEventListener("click", () => {
                 if (G.paused) togglePauseFn();
             });
-            document
-                .getElementById("pauseBtn")
-                .addEventListener("click", () => {
-                    if (!G.started || G.gameOver) return;
-                    togglePauseFn();
-                });
+            document.getElementById('pauseBtn').addEventListener('click', () => {
+                if (!G.started || G.gameOver) return;
+                togglePauseFn();
+            });
             function startGameFn() {
                 clearDropTimer();
                 clearLockTimer();
@@ -2249,13 +2121,48 @@
                 scheduleDrop();
             }
             function updatePauseBtn() {
-                var btn = document.getElementById("pauseBtn");
+                var btn = document.getElementById('pauseBtn');
                 if (!btn) return;
                 if (G.paused) {
-                    btn.className = "tbtn pause-on";
+                    btn.className = 'tbtn pause-on';
                 } else {
-                    btn.className = "tbtn";
+                    btn.className = 'tbtn';
                 }
+            }
+
+            function completeClearNow() {
+                if (!G.clearTimer) return;
+                clearTimeout(G.clearTimer);
+                G.clearTimer = null;
+                G.board = removeLines(G.board, G.clearingLines);
+                const lc = G.clearingLines.length,
+                    clearScore =
+                        (lc < LINE_SCORES.length
+                            ? LINE_SCORES[lc]
+                            : LINE_SCORES[LINE_SCORES.length - 1]) *
+                        (G.level + 1);
+                G.score += clearScore;
+                G.lines += lc;
+                G.level = Math.floor(G.lines / 10);
+                sfx.clear(lc);
+                if (isBoardEmpty(G.board)) {
+                    const bonus = PERFECT_CLEAR_BONUS * (G.level + 1);
+                    G.score += bonus;
+                    G.totalBonus += bonus;
+                    createPerfectClearParticles();
+                    sfx.perfectClear();
+                    showBonusPopup(
+                        t("perfectClear") +
+                            bonus.toLocaleString(getLoc()),
+                    );
+                } else if (lc >= 4)
+                    showBonusPopup(
+                        t("tetrisBonus") +
+                            clearScore.toLocaleString(getLoc()),
+                    );
+                G.clearingLines = [];
+                G.clearingLineSet = null;
+                updateUI();
             }
 
             function togglePauseFn() {
@@ -2264,6 +2171,7 @@
                 if (G.paused) {
                     clearDropTimer();
                     clearLockTimer();
+                    completeClearNow();
                     keyState.left.active =
                         keyState.right.active =
                         keyState.down.active =
@@ -2272,8 +2180,14 @@
                 } else {
                     setOverlay(null);
                     G.lastTime = performance.now();
-                    if (G.lockDelayActive) startLockDelayTimer();
-                    scheduleDrop();
+                    if (G.clearingLines.length === 0 && G.currentPiece) {
+                        if (G.lockDelayActive) startLockDelayTimer();
+                        scheduleDrop();
+                    } else if (!G.currentPiece) {
+                        spawnPiece();
+                        drawNext();
+                        scheduleDrop();
+                    }
                     requestRender();
                 }
                 updatePauseBtn();
@@ -2287,19 +2201,12 @@
                 } catch (e) {}
                 updateLocalization();
             });
-            document
-                .getElementById("soundBtn")
-                .addEventListener("click", () => {
-                    G.soundOn = !G.soundOn;
-                    try {
-                        localStorage.setItem(
-                            SOUND_KEY,
-                            G.soundOn ? "on" : "off",
-                        );
-                    } catch (e) {}
-                    updateSoundBtn();
-                    if (G.soundOn) initAudio();
-                });
+            document.getElementById("soundBtn").addEventListener("click", () => {
+                G.soundOn = !G.soundOn;
+                try { localStorage.setItem(SOUND_KEY, G.soundOn ? 'on' : 'off'); } catch(e) {}
+                updateSoundBtn();
+                if (G.soundOn) initAudio();
+            });
             updateLocalization();
             updateSoundBtn();
             updatePauseBtn();
@@ -2307,17 +2214,9 @@
             render();
             drawNext();
         </script>
-        <script>
-            if ("serviceWorker" in navigator) {
-                window.addEventListener("load", () => {
-                    navigator.serviceWorker
-                        .register("./sw.js")
-                        .then((reg) =>
-                            console.log("SW зарегистрирован:", reg.scope),
-                        )
-                        .catch((err) => console.error("Ошибка SW:", err));
-                });
-            }
-        </script>
-    </body>
+    <script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+</script>
+</body>
 </html>
+                                                                                      
