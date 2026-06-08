@@ -10,6 +10,7 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         <meta name="apple-mobile-web-app-title" content="Тетрис" />
         <title>Tetris</title>
+        <title>Tetris</title>
         <style>
             * {
                 margin: 0;
@@ -28,6 +29,13 @@
                 gap: 16px;
                 padding: 16px;
             }
+            .top-bar {
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+                width: 100%;
+                position: relative;
+            }
             .title-row {
                 display: flex;
                 align-items: flex-end;
@@ -35,6 +43,41 @@
                 gap: 6px;
                 will-change: filter;
                 animation: titleGlow 3s ease-in-out infinite;
+            }
+            .btn-row {
+                display: flex;
+                gap: 6px;
+            }
+            .tbtn {
+                flex: 1;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                color: #888;
+                font-family: inherit;
+                font-size: 0.6rem;
+                font-weight: bold;
+                letter-spacing: 0.08em;
+                padding: 6px 0;
+                cursor: pointer;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+                text-align: center;
+            }
+            .tbtn:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #ccc;
+            }
+            .tbtn.sound-on {
+                background: rgba(200, 168, 232, 0.08);
+                border-color: rgba(200, 168, 232, 0.2);
+                color: #c8a8e8;
+            }
+            .tbtn.sound-off {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.1);
+                color: #666;
             }
             .title-letter {
                 display: grid;
@@ -50,38 +93,6 @@
                 display: flex;
                 gap: 24px;
                 align-items: flex-start;
-            }
-            .panel {
-                min-width: 140px;
-                max-width: 170px;
-            }
-            .panel-box {
-                border-radius: 6px;
-                padding: 12px;
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.06);
-            }
-            .panel-box h3,
-            .panel-box .label {
-                text-transform: uppercase;
-                font-size: 0.65rem;
-                color: #888;
-                letter-spacing: 0.15em;
-                margin-bottom: 4px;
-                text-align: center;
-            }
-            .scroll-box {
-                max-height: 520px;
-                overflow-y: auto;
-                scrollbar-width: thin;
-                scrollbar-color: rgba(200, 168, 232, 0.3) transparent;
-            }
-            .scroll-box::-webkit-scrollbar {
-                width: 4px;
-            }
-            .scroll-box::-webkit-scrollbar-thumb {
-                background: rgba(200, 168, 232, 0.3);
-                border-radius: 2px;
             }
             table {
                 width: 100%;
@@ -232,22 +243,7 @@
                 color: #666;
                 line-height: 1.7;
             }
-            .lang-btn {
-                width: 100%;
-                border-radius: 6px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                color: #999;
-                font-family: inherit;
-                font-size: 0.6rem;
-                font-weight: bold;
-                letter-spacing: 0.06em;
-                padding: 6px 4px;
-            }
+
             .gameover-table {
                 width: 80%;
                 max-width: 280px;
@@ -297,14 +293,10 @@
         </style>
     </head>
     <body>
-        <div id="titleRow" class="title-row"></div>
+        <div class="top-bar">
+            <div id="titleRow" class="title-row"></div>
+        </div>
         <div class="main-row">
-            <div class="panel">
-                <div class="panel-box">
-                    <div class="label" id="recordsLabel"></div>
-                    <div class="scroll-box" id="leaderboardBox"></div>
-                </div>
-            </div>
             <div class="board-wrap" id="boardWrap">
                 <span class="gp-indicator" id="gpIndicator"></span>
                 <canvas id="boardCanvas"></canvas>
@@ -332,6 +324,10 @@
                 </div>
             </div>
             <div class="right-panel">
+                <div class="btn-row">
+                    <button class="tbtn" id="langBtn">EN</button>
+                    <button class="tbtn" id="soundBtn"></button>
+                </div>
                 <div class="stat-box">
                     <div class="label" id="nextLabel"></div>
                     <canvas
@@ -361,7 +357,6 @@
                     <p id="ctrlHard"></p>
                     <p id="ctrlPause"></p>
                 </div>
-                <button class="lang-btn" id="langBtn">EN</button>
             </div>
         </div>
         <script>
@@ -667,6 +662,172 @@
             const LOCK_DELAY = 500,
                 MAX_LOCK_RESETS = 15,
                 CLEAR_DURATION = 175;
+            const SOUND_KEY = "tetris_sound";
+
+            // ═══════════════════════════════════════════
+            // SOUND SYSTEM (from cubefall)
+            // ═══════════════════════════════════════════
+            let audioCtx = null;
+
+            function createAudioCtx() {
+                try {
+                    audioCtx = new (
+                        window.AudioContext || window.webkitAudioContext
+                    )();
+                } catch (e) {
+                    audioCtx = null;
+                    G.soundOn = false;
+                }
+                if (audioCtx) {
+                    audioCtx.onstatechange = function () {
+                        if (audioCtx && audioCtx.state === "interrupted")
+                            audioCtx.resume().catch(function () {});
+                    };
+                }
+            }
+
+            function initAudio() {
+                if (!audioCtx && G.soundOn) {
+                    createAudioCtx();
+                }
+                if (audioCtx) {
+                    if (
+                        audioCtx.state === "suspended" ||
+                        audioCtx.state === "interrupted"
+                    ) {
+                        audioCtx.resume().catch(function () {});
+                    } else if (audioCtx.state === "closed") {
+                        audioCtx = null;
+                        createAudioCtx();
+                    }
+                }
+            }
+
+            function playTone(freq, duration, volume, type) {
+                if (!G.soundOn) return;
+                if (!audioCtx || audioCtx.state === "closed") {
+                    audioCtx = null;
+                    createAudioCtx();
+                }
+                if (!audioCtx) return;
+                if (
+                    audioCtx.state === "suspended" ||
+                    audioCtx.state === "interrupted"
+                ) {
+                    audioCtx.resume().catch(function () {});
+                }
+                try {
+                    var osc = audioCtx.createOscillator(),
+                        gain = audioCtx.createGain();
+                    osc.type = type || "sine";
+                    osc.frequency.value = freq;
+                    var v = Math.min(volume, 0.3);
+                    gain.gain.setValueAtTime(v, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(
+                        0.001,
+                        audioCtx.currentTime + duration,
+                    );
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + duration);
+                } catch (e) {
+                    audioCtx = null;
+                    createAudioCtx();
+                }
+            }
+
+            // Resume audio after system wake-up or tab focus
+            document.addEventListener("visibilitychange", function () {
+                if (!document.hidden) initAudio();
+            });
+            window.addEventListener("pageshow", function () {
+                initAudio();
+            });
+
+            var sfx = {
+                move: function () {
+                    playTone(250, 0.04, 0.04, "sine");
+                },
+                rotate: function () {
+                    playTone(400, 0.06, 0.06, "sine");
+                    setTimeout(function () {
+                        playTone(500, 0.06, 0.05, "sine");
+                    }, 30);
+                },
+                softDrop: function () {
+                    playTone(200, 0.05, 0.04, "triangle");
+                },
+                hardDrop: function () {
+                    playTone(150, 0.12, 0.1, "triangle");
+                    setTimeout(function () {
+                        playTone(100, 0.08, 0.06, "sine");
+                    }, 40);
+                },
+                land: function () {
+                    playTone(200, 0.1, 0.08, "triangle");
+                },
+                clear: function (n) {
+                    var base = 523 + Math.min(n, 15) * 30;
+                    playTone(base, 0.2, 0.1, "sine");
+                    setTimeout(function () {
+                        playTone(base * 1.25, 0.15, 0.08, "sine");
+                    }, 50);
+                    if (n >= 4)
+                        setTimeout(function () {
+                            playTone(base * 1.5, 0.12, 0.06, "sine");
+                        }, 100);
+                },
+                perfectClear: function () {
+                    playTone(523, 0.15, 0.12, "sine");
+                    setTimeout(function () {
+                        playTone(659, 0.15, 0.12, "sine");
+                    }, 100);
+                    setTimeout(function () {
+                        playTone(784, 0.15, 0.1, "sine");
+                    }, 200);
+                    setTimeout(function () {
+                        playTone(1047, 0.25, 0.14, "sine");
+                    }, 300);
+                },
+                gameOver: function () {
+                    playTone(440, 0.3, 0.1, "sine");
+                    setTimeout(function () {
+                        playTone(370, 0.3, 0.08, "sine");
+                    }, 200);
+                    setTimeout(function () {
+                        playTone(330, 0.5, 0.06, "sine");
+                    }, 400);
+                },
+                start: function () {
+                    playTone(523, 0.15, 0.1, "sine");
+                    setTimeout(function () {
+                        playTone(659, 0.15, 0.1, "sine");
+                    }, 100);
+                    setTimeout(function () {
+                        playTone(784, 0.2, 0.12, "sine");
+                    }, 200);
+                },
+                hold: function () {
+                    playTone(440, 0.06, 0.08, "sine");
+                    setTimeout(function () {
+                        playTone(550, 0.06, 0.06, "sine");
+                    }, 40);
+                },
+            };
+
+            function updateSoundBtn() {
+                var btn = document.getElementById("soundBtn");
+                if (G.soundOn) {
+                    btn.className = "tbtn sound-on";
+                    btn.innerHTML =
+                        '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></span>';
+                } else {
+                    btn.className = "tbtn sound-off";
+                    btn.innerHTML =
+                        '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></span>';
+                }
+            }
             const LOC = {
                 title: { ru: "ТЕТРИС", en: "TETRIS" },
                 play: { ru: "ИГРАТЬ", en: "PLAY" },
@@ -900,6 +1061,13 @@
                 gpConnected: false,
                 gpPrevState: null,
                 lang: "ru",
+                soundOn: (function () {
+                    try {
+                        if (localStorage.getItem(SOUND_KEY) === "off")
+                            return false;
+                    } catch (e) {}
+                    return true;
+                })(),
                 overlay: "start",
                 highlightIdx: -1,
                 lastTime: performance.now(),
@@ -952,349 +1120,159 @@
                 startBtn = document.getElementById("startBtn"),
                 restartBtn = document.getElementById("restartBtn"),
                 gpIndicator = document.getElementById("gpIndicator");
-            let gl = null,
-                GL = null;
             boardCanvas.width = BW;
             boardCanvas.height = BH;
-            function initWebGL() {
-                gl = boardCanvas.getContext("webgl2", {
-                    alpha: false,
-                    antialias: false,
-                    premultipliedAlpha: false,
-                });
-                if (!gl) return;
-                const BG_VS = `#version 300 es
-layout(location=0) in vec2 a_pos; out vec2 v_uv; void main(){ gl_Position=vec4(a_pos,0,1); v_uv=a_pos*0.5+0.5; }`;
-                const BG_FS = `#version 300 es
-precision mediump float; in vec2 v_uv; uniform sampler2D u_tex; out vec4 fc; void main(){ fc=texture(u_tex,v_uv); }`;
-                const CELL_VS = `#version 300 es
-layout(location=0) in vec2 a_pos; layout(location=1) in vec2 a_off; layout(location=2) in float a_sz; layout(location=3) in vec4 a_uv; layout(location=4) in float a_alpha; uniform vec2 u_res; out vec2 v_uv; out float v_a; void main(){ vec2 px=a_off+a_pos*a_sz; vec2 cp=(px/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); v_uv=a_uv.xy+a_pos*a_uv.zw; v_a=a_alpha; }`;
-                const CELL_FS = `#version 300 es
-precision mediump float; in vec2 v_uv; in float v_a; uniform sampler2D u_tex; out vec4 fc; void main(){ vec4 t=texture(u_tex,v_uv); fc=vec4(t.rgb,t.a*v_a); }`;
-                const PART_VS = `#version 300 es
-layout(location=0) in vec2 a_pos; layout(location=1) in float a_sz; layout(location=2) in vec4 a_col; uniform vec2 u_res; out vec4 v_col; void main(){ vec2 cp=(a_pos/u_res)*2.0-1.0; cp.y*=-1.0; gl_Position=vec4(cp,0,1); gl_PointSize=a_sz*2.0; v_col=a_col; }`;
-                const PART_FS = `#version 300 es
-precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5)discard; float a=v_col.a*smoothstep(0.5,0.05,d); fc=vec4(v_col.rgb,a); }`;
-                function compileShader(src, type) {
-                    const s = gl.createShader(type);
-                    gl.shaderSource(s, src);
-                    gl.compileShader(s);
-                    return s;
+            const boardCtx = boardCanvas.getContext("2d");
+            function roundRect(ctx, x, y, w, h, radii) {
+                let tl, tr, br, bl;
+                if (Array.isArray(radii)) {
+                    [tl, tr, br, bl] = radii;
+                } else {
+                    tl = tr = br = bl = radii;
                 }
-                function createProgram(vs, fs) {
-                    const p = gl.createProgram(),
-                        vShader = compileShader(vs, gl.VERTEX_SHADER),
-                        fShader = compileShader(fs, gl.FRAGMENT_SHADER);
-                    gl.attachShader(p, vShader);
-                    gl.attachShader(p, fShader);
-                    gl.linkProgram(p);
-                    gl.deleteShader(vShader);
-                    gl.deleteShader(fShader);
-                    return p;
-                }
-                const bgProg = createProgram(BG_VS, BG_FS),
-                    cellProg = createProgram(CELL_VS, CELL_FS),
-                    partProg = createProgram(PART_VS, PART_FS);
-                const bgU_tex = gl.getUniformLocation(bgProg, "u_tex"),
-                    cellU_res = gl.getUniformLocation(cellProg, "u_res"),
-                    cellU_tex = gl.getUniformLocation(cellProg, "u_tex");
-                const partU_res = gl.getUniformLocation(partProg, "u_res"),
-                    cellA_pos = gl.getAttribLocation(cellProg, "a_pos"),
-                    cellA_off = gl.getAttribLocation(cellProg, "a_off");
-                const cellA_sz = gl.getAttribLocation(cellProg, "a_sz"),
-                    cellA_uv = gl.getAttribLocation(cellProg, "a_uv"),
-                    cellA_alpha = gl.getAttribLocation(cellProg, "a_alpha");
-                const partA_pos = gl.getAttribLocation(partProg, "a_pos"),
-                    partA_sz = gl.getAttribLocation(partProg, "a_sz"),
-                    partA_col = gl.getAttribLocation(partProg, "a_col");
-                function roundRect(ctx, x, y, w, h, radii) {
-                    let tl, tr, br, bl;
-                    if (Array.isArray(radii)) {
-                        [tl, tr, br, bl] = radii;
-                    } else {
-                        tl = tr = br = bl = radii;
-                    }
-                    ctx.beginPath();
-                    ctx.moveTo(x + tl, y);
-                    ctx.lineTo(x + w - tr, y);
-                    ctx.quadraticCurveTo(x + w, y, x + w, y + tr);
-                    ctx.lineTo(x + w, y + h - br);
-                    ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
-                    ctx.lineTo(x + bl, y + h);
-                    ctx.quadraticCurveTo(x, y + h, x, y + h - bl);
-                    ctx.lineTo(x, y + tl);
-                    ctx.quadraticCurveTo(x, y, x + tl, y);
-                    ctx.closePath();
-                }
-                function drawGlassCell(ctx, x, y, type, cellSize, isGhost) {
-                    const co = COLORS[type],
-                        px = x * cellSize,
-                        py = y * cellSize,
-                        cs = cellSize,
-                        r = 3;
-                    if (isGhost) {
-                        ctx.save();
-                        ctx.globalAlpha = 0.18;
-                        ctx.fillStyle = co.base;
-                        roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
-                        ctx.fill();
-                        ctx.globalAlpha = 0.35;
-                        ctx.strokeStyle = co.light;
-                        ctx.lineWidth = 1;
-                        roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
-                        ctx.stroke();
-                        ctx.restore();
-                        return;
-                    }
-                    ctx.save();
-                    const grad = ctx.createLinearGradient(px, py, px, py + cs);
-                    grad.addColorStop(0, co.light);
-                    grad.addColorStop(0.35, co.base);
-                    grad.addColorStop(0.7, co.mid);
-                    grad.addColorStop(1, co.dark);
-                    ctx.fillStyle = grad;
-                    roundRect(ctx, px + 0.5, py + 0.5, cs - 1, cs - 1, r);
-                    ctx.fill();
-                    ctx.strokeStyle = "rgba(255,255,255,0.25)";
-                    ctx.lineWidth = 1;
-                    roundRect(ctx, px + 1.5, py + 1.5, cs - 3, cs - 3, r - 0.5);
-                    ctx.stroke();
-                    const shineH = cs * 0.38;
-                    ctx.globalAlpha = 0.45;
-                    const shG = ctx.createLinearGradient(
-                        px,
-                        py,
-                        px,
-                        py + shineH,
-                    );
-                    shG.addColorStop(0, "rgba(255,255,255,0.7)");
-                    shG.addColorStop(1, "rgba(255,255,255,0)");
-                    ctx.fillStyle = shG;
-                    roundRect(ctx, px + 2, py + 2, cs - 4, shineH, [
-                        r - 1,
-                        r - 1,
-                        0,
-                        0,
-                    ]);
-                    ctx.fill();
-                    ctx.globalAlpha = 0.6;
-                    ctx.fillStyle = "#fff";
-                    ctx.beginPath();
-                    ctx.ellipse(
-                        px + cs * 0.28,
-                        py + cs * 0.22,
-                        cs * 0.08,
-                        cs * 0.05,
-                        -0.3,
-                        0,
-                        Math.PI * 2,
-                    );
-                    ctx.fill();
-                    ctx.globalAlpha = 0.15;
-                    const sG = ctx.createLinearGradient(
-                        px,
-                        py + cs * 0.7,
-                        px,
-                        py + cs,
-                    );
-                    sG.addColorStop(0, "rgba(0,0,0,0)");
-                    sG.addColorStop(1, "rgba(0,0,0,0.5)");
-                    ctx.fillStyle = sG;
-                    roundRect(ctx, px + 2, py + cs * 0.65, cs - 4, cs * 0.33, [
-                        0,
-                        0,
-                        r - 1,
-                        r - 1,
-                    ]);
-                    ctx.fill();
-                    ctx.globalAlpha = 0.08;
-                    ctx.shadowColor = co.base;
-                    ctx.shadowBlur = 8;
-                    ctx.fillStyle = co.base;
-                    roundRect(ctx, px, py, cs, cs, r);
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                    ctx.globalAlpha = 1;
-                    ctx.restore();
-                }
-                const atlasCanvas = document.createElement("canvas");
-                atlasCanvas.width = 7 * CELL;
-                atlasCanvas.height = 3 * CELL;
-                const atlasCtx = atlasCanvas.getContext("2d");
-                PIECE_TYPES.forEach((type, i) =>
-                    drawGlassCell(atlasCtx, i, 0, type, CELL, false),
-                );
-                PIECE_TYPES.forEach((type, i) =>
-                    drawGlassCell(atlasCtx, i, 1, type, CELL, true),
-                );
-                PIECE_TYPES.forEach((_type, i) => {
-                    const px = i * CELL,
-                        py = 2 * CELL;
-                    atlasCtx.save();
-                    atlasCtx.strokeStyle = "rgba(255,255,255,0.55)";
-                    atlasCtx.lineWidth = 1.5;
-                    atlasCtx.setLineDash([3, 3]);
-                    roundRect(atlasCtx, px + 1, py + 1, CELL - 2, CELL - 2, 3);
-                    atlasCtx.stroke();
-                    atlasCtx.restore();
-                });
-                const cellUVTable = {};
-                PIECE_TYPES.forEach((type, ti) => {
-                    cellUVTable[type] = {
-                        0: [
-                            (ti * CELL) / atlasCanvas.width,
-                            0,
-                            CELL / atlasCanvas.width,
-                            CELL / atlasCanvas.height,
-                        ],
-                        1: [
-                            (ti * CELL) / atlasCanvas.width,
-                            CELL / atlasCanvas.height,
-                            CELL / atlasCanvas.width,
-                            CELL / atlasCanvas.height,
-                        ],
-                        2: [
-                            (ti * CELL) / atlasCanvas.width,
-                            (2 * CELL) / atlasCanvas.height,
-                            CELL / atlasCanvas.width,
-                            CELL / atlasCanvas.height,
-                        ],
-                    };
-                });
-                const bgCanvas = document.createElement("canvas");
-                bgCanvas.width = BW;
-                bgCanvas.height = BH;
-                const bgCtx = bgCanvas.getContext("2d");
-                const bgG = bgCtx.createLinearGradient(0, 0, 0, BH);
-                bgG.addColorStop(0, "#0e0e18");
-                bgG.addColorStop(1, "#0a0a10");
-                bgCtx.fillStyle = bgG;
-                bgCtx.fillRect(0, 0, BW, BH);
-                bgCtx.strokeStyle = "rgba(255,255,255,0.03)";
-                bgCtx.lineWidth = 0.5;
-                for (let x = 0; x <= COLS; x++) {
-                    bgCtx.beginPath();
-                    bgCtx.moveTo(x * CELL, 0);
-                    bgCtx.lineTo(x * CELL, BH);
-                    bgCtx.stroke();
-                }
-                for (let y = 0; y <= ROWS; y++) {
-                    bgCtx.beginPath();
-                    bgCtx.moveTo(0, y * CELL);
-                    bgCtx.lineTo(BW, y * CELL);
-                    bgCtx.stroke();
-                }
-                bgCtx.strokeStyle = "rgba(255,255,255,0.1)";
-                bgCtx.lineWidth = 2;
-                bgCtx.strokeRect(0, 0, BW, BH);
-                function createTex(canvas) {
-                    const tex = gl.createTexture();
-                    gl.bindTexture(gl.TEXTURE_2D, tex);
-                    gl.texImage2D(
-                        gl.TEXTURE_2D,
-                        0,
-                        gl.RGBA,
-                        gl.RGBA,
-                        gl.UNSIGNED_BYTE,
-                        canvas,
-                    );
-                    gl.texParameteri(
-                        gl.TEXTURE_2D,
-                        gl.TEXTURE_MIN_FILTER,
-                        gl.LINEAR,
-                    );
-                    gl.texParameteri(
-                        gl.TEXTURE_2D,
-                        gl.TEXTURE_WRAP_S,
-                        gl.CLAMP_TO_EDGE,
-                    );
-                    gl.texParameteri(
-                        gl.TEXTURE_2D,
-                        gl.TEXTURE_WRAP_T,
-                        gl.CLAMP_TO_EDGE,
-                    );
-                    return tex;
-                }
-                const bgTex = createTex(bgCanvas),
-                    atlasTex = createTex(atlasCanvas);
-                const bgVao = gl.createVertexArray(),
-                    bgBuf = gl.createBuffer();
-                gl.bindVertexArray(bgVao);
-                gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
-                gl.bufferData(
-                    gl.ARRAY_BUFFER,
-                    new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-                    gl.STATIC_DRAW,
-                );
-                gl.enableVertexAttribArray(0);
-                gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-                gl.bindVertexArray(null);
-                const cellQuadVao = gl.createVertexArray(),
-                    cellQuadBuf = gl.createBuffer();
-                gl.bindVertexArray(cellQuadVao);
-                gl.bindBuffer(gl.ARRAY_BUFFER, cellQuadBuf);
-                gl.bufferData(
-                    gl.ARRAY_BUFFER,
-                    new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
-                    gl.STATIC_DRAW,
-                );
-                gl.enableVertexAttribArray(cellA_pos);
-                gl.vertexAttribPointer(cellA_pos, 2, gl.FLOAT, false, 0, 0);
-                gl.bindVertexArray(null);
-                const cellInstBuf = gl.createBuffer(),
-                    cellInstArr = new Float32Array(250 * 8);
-                gl.bindBuffer(gl.ARRAY_BUFFER, cellInstBuf);
-                gl.bufferData(
-                    gl.ARRAY_BUFFER,
-                    cellInstArr.byteLength,
-                    gl.DYNAMIC_DRAW,
-                );
-                const partBuf = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, partBuf);
-                gl.bufferData(gl.ARRAY_BUFFER, 600 * 7 * 4, gl.DYNAMIC_DRAW);
-                GL = {
-                    bgProg,
-                    cellProg,
-                    partProg,
-                    bgU_tex,
-                    cellU_res,
-                    cellU_tex,
-                    partU_res,
-                    cellA_pos,
-                    cellA_off,
-                    cellA_sz,
-                    cellA_uv,
-                    cellA_alpha,
-                    partA_pos,
-                    partA_sz,
-                    partA_col,
-                    bgVao,
-                    cellQuadVao,
-                    bgBuf,
-                    cellQuadBuf,
-                    cellInstBuf,
-                    cellInstArr,
-                    partBuf,
-                    bgTex,
-                    atlasTex,
-                    cellUVTable,
-                };
+                ctx.beginPath();
+                ctx.moveTo(x + tl, y);
+                ctx.lineTo(x + w - tr, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + tr);
+                ctx.lineTo(x + w, y + h - br);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+                ctx.lineTo(x + bl, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - bl);
+                ctx.lineTo(x, y + tl);
+                ctx.quadraticCurveTo(x, y, x + tl, y);
+                ctx.closePath();
             }
+            function drawGlassCell(ctx, x, y, type, cellSize, isGhost) {
+                const co = COLORS[type],
+                    px = x * cellSize,
+                    py = y * cellSize,
+                    cs = cellSize,
+                    r = 3;
+                if (isGhost) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.18;
+                    ctx.fillStyle = co.base;
+                    roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
+                    ctx.fill();
+                    ctx.globalAlpha = 0.35;
+                    ctx.strokeStyle = co.light;
+                    ctx.lineWidth = 1;
+                    roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
+                    ctx.stroke();
+                    ctx.restore();
+                    return;
+                }
+                ctx.save();
+                const grad = ctx.createLinearGradient(px, py, px, py + cs);
+                grad.addColorStop(0, co.light);
+                grad.addColorStop(0.35, co.base);
+                grad.addColorStop(0.7, co.mid);
+                grad.addColorStop(1, co.dark);
+                ctx.fillStyle = grad;
+                roundRect(ctx, px + 0.5, py + 0.5, cs - 1, cs - 1, r);
+                ctx.fill();
+                ctx.strokeStyle = "rgba(255,255,255,0.25)";
+                ctx.lineWidth = 1;
+                roundRect(ctx, px + 1.5, py + 1.5, cs - 3, cs - 3, r - 0.5);
+                ctx.stroke();
+                const shineH = cs * 0.38;
+                ctx.globalAlpha = 0.45;
+                const shG = ctx.createLinearGradient(px, py, px, py + shineH);
+                shG.addColorStop(0, "rgba(255,255,255,0.7)");
+                shG.addColorStop(1, "rgba(255,255,255,0)");
+                ctx.fillStyle = shG;
+                roundRect(ctx, px + 2, py + 2, cs - 4, shineH, [
+                    r - 1,
+                    r - 1,
+                    0,
+                    0,
+                ]);
+                ctx.fill();
+                ctx.globalAlpha = 0.6;
+                ctx.fillStyle = "#fff";
+                ctx.beginPath();
+                ctx.ellipse(
+                    px + cs * 0.28,
+                    py + cs * 0.22,
+                    cs * 0.08,
+                    cs * 0.05,
+                    -0.3,
+                    0,
+                    Math.PI * 2,
+                );
+                ctx.fill();
+                ctx.globalAlpha = 0.15;
+                const sG = ctx.createLinearGradient(
+                    px,
+                    py + cs * 0.7,
+                    px,
+                    py + cs,
+                );
+                sG.addColorStop(0, "rgba(0,0,0,0)");
+                sG.addColorStop(1, "rgba(0,0,0,0.5)");
+                ctx.fillStyle = sG;
+                roundRect(ctx, px + 2, py + cs * 0.65, cs - 4, cs * 0.33, [
+                    0,
+                    0,
+                    r - 1,
+                    r - 1,
+                ]);
+                ctx.fill();
+                ctx.globalAlpha = 0.08;
+                ctx.shadowColor = co.base;
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = co.base;
+                roundRect(ctx, px, py, cs, cs, r);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+                ctx.restore();
+            }
+            function drawLockIndicator(ctx, col, row, cellSize) {
+                const px = col * cellSize,
+                    py = row * cellSize;
+                ctx.save();
+                ctx.strokeStyle = "rgba(255,255,255,0.55)";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 3]);
+                roundRect(ctx, px + 1, py + 1, cellSize - 2, cellSize - 2, 3);
+                ctx.stroke();
+                ctx.restore();
+            }
+            const bgCanvas = document.createElement("canvas");
+            bgCanvas.width = BW;
+            bgCanvas.height = BH;
+            const bgCtx = bgCanvas.getContext("2d");
+            const bgG = bgCtx.createLinearGradient(0, 0, 0, BH);
+            bgG.addColorStop(0, "#0e0e18");
+            bgG.addColorStop(1, "#0a0a10");
+            bgCtx.fillStyle = bgG;
+            bgCtx.fillRect(0, 0, BW, BH);
+            bgCtx.strokeStyle = "rgba(255,255,255,0.03)";
+            bgCtx.lineWidth = 0.5;
+            for (let x = 0; x <= COLS; x++) {
+                bgCtx.beginPath();
+                bgCtx.moveTo(x * CELL, 0);
+                bgCtx.lineTo(x * CELL, BH);
+                bgCtx.stroke();
+            }
+            for (let y = 0; y <= ROWS; y++) {
+                bgCtx.beginPath();
+                bgCtx.moveTo(0, y * CELL);
+                bgCtx.lineTo(BW, y * CELL);
+                bgCtx.stroke();
+            }
+            bgCtx.strokeStyle = "rgba(255,255,255,0.1)";
+            bgCtx.lineWidth = 2;
+            bgCtx.strokeRect(0, 0, BW, BH);
+
             function render() {
-                if (!gl || !GL) return;
-                gl.viewport(0, 0, BW, BH);
-                gl.clearColor(0.04, 0.04, 0.07, 1);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                gl.disable(gl.DEPTH_TEST);
-                gl.useProgram(GL.bgProg);
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, GL.bgTex);
-                gl.uniform1i(GL.bgU_tex, 0);
-                gl.bindVertexArray(GL.bgVao);
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-                gl.bindVertexArray(null);
-                let instIdx = 0;
-                const cellInst = GL.cellInstArr;
+                if (!boardCtx) return;
+
+                // 1. Draw background
+                boardCtx.drawImage(bgCanvas, 0, 0);
+
+                // 2. Calculate clear animation progress
                 const nowMs = performance.now();
                 let clearT = 0;
                 if (G.clearingLineSet && G.clearingLineSet.size > 0)
@@ -1302,113 +1280,96 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                         (nowMs - G.removingStart) / CLEAR_DURATION,
                         1,
                     );
+
+                // 3. Draw board cells
                 for (let r = 0; r < ROWS; r++)
                     for (let c = 0; c < COLS; c++) {
-                        if (instIdx >= 250) break;
                         if (G.board[r][c] !== null) {
                             if (G.clearingLineSet && G.clearingLineSet.has(r)) {
+                                // Animate: shrink + fade
+                                boardCtx.save();
+                                boardCtx.globalAlpha = 1 - clearT;
                                 const sz = CELL * (1 - clearT * 0.5),
-                                    offX = c * CELL + (CELL - sz) / 2,
-                                    offY = r * CELL + (CELL - sz) / 2;
-                                const uv = GL.cellUVTable[G.board[r][c]][0],
-                                    base = instIdx * 8;
-                                cellInst[base] = offX;
-                                cellInst[base + 1] = offY;
-                                cellInst[base + 2] = sz;
-                                cellInst[base + 3] = uv[0];
-                                cellInst[base + 4] = uv[1];
-                                cellInst[base + 5] = uv[2];
-                                cellInst[base + 6] = uv[3];
-                                cellInst[base + 7] = 1 - clearT;
-                                instIdx++;
+                                    scale = sz / CELL,
+                                    cx = c * CELL + CELL / 2,
+                                    cy = r * CELL + CELL / 2;
+                                boardCtx.translate(cx, cy);
+                                boardCtx.scale(scale, scale);
+                                boardCtx.translate(-cx, -cy);
+                                drawGlassCell(
+                                    boardCtx,
+                                    c,
+                                    r,
+                                    G.board[r][c],
+                                    CELL,
+                                    false,
+                                );
+                                boardCtx.restore();
                             } else {
-                                const uv = GL.cellUVTable[G.board[r][c]][0],
-                                    base = instIdx * 8;
-                                cellInst[base] = c * CELL;
-                                cellInst[base + 1] = r * CELL;
-                                cellInst[base + 2] = CELL;
-                                cellInst[base + 3] = uv[0];
-                                cellInst[base + 4] = uv[1];
-                                cellInst[base + 5] = uv[2];
-                                cellInst[base + 6] = uv[3];
-                                cellInst[base + 7] = 1.0;
-                                instIdx++;
+                                drawGlassCell(
+                                    boardCtx,
+                                    c,
+                                    r,
+                                    G.board[r][c],
+                                    CELL,
+                                    false,
+                                );
                             }
                         }
                     }
-                if (G.currentPiece && instIdx < 250) {
+
+                // 4. Draw ghost piece
+                if (G.currentPiece) {
                     const gy = G.cachedGhostY;
                     if (gy >= 0 && gy !== G.currentPiece.y) {
                         const s = getShape(
                             G.currentPiece.type,
                             G.currentPiece.rotation,
                         );
-                        for (let r = 0; r < s.length && instIdx < 250; r++)
-                            for (
-                                let c = 0;
-                                c < s[r].length && instIdx < 250;
-                                c++
-                            )
-                                if (s[r][c] && gy + r >= 0) {
-                                    const uv =
-                                            GL.cellUVTable[
-                                                G.currentPiece.type
-                                            ][1],
-                                        base = instIdx * 8;
-                                    cellInst[base] =
-                                        (G.currentPiece.x + c) * CELL;
-                                    cellInst[base + 1] = (gy + r) * CELL;
-                                    cellInst[base + 2] = CELL;
-                                    cellInst[base + 3] = uv[0];
-                                    cellInst[base + 4] = uv[1];
-                                    cellInst[base + 5] = uv[2];
-                                    cellInst[base + 6] = uv[3];
-                                    cellInst[base + 7] = 1.0;
-                                    instIdx++;
-                                }
+                        for (let r = 0; r < s.length; r++)
+                            for (let c = 0; c < s[r].length; c++)
+                                if (s[r][c] && gy + r >= 0)
+                                    drawGlassCell(
+                                        boardCtx,
+                                        G.currentPiece.x + c,
+                                        gy + r,
+                                        G.currentPiece.type,
+                                        CELL,
+                                        true,
+                                    );
                     }
+
+                    // 5. Draw current piece
                     const s = getShape(
                         G.currentPiece.type,
                         G.currentPiece.rotation,
                     );
-                    for (let r = 0; r < s.length && instIdx < 250; r++)
-                        for (let c = 0; c < s[r].length && instIdx < 250; c++)
+                    for (let r = 0; r < s.length; r++)
+                        for (let c = 0; c < s[r].length; c++)
                             if (s[r][c] && G.currentPiece.y + r >= 0) {
-                                const uv =
-                                        GL.cellUVTable[G.currentPiece.type][0],
-                                    base = instIdx * 8;
-                                cellInst[base] = (G.currentPiece.x + c) * CELL;
-                                cellInst[base + 1] =
-                                    (G.currentPiece.y + r) * CELL;
-                                cellInst[base + 2] = CELL;
-                                cellInst[base + 3] = uv[0];
-                                cellInst[base + 4] = uv[1];
-                                cellInst[base + 5] = uv[2];
-                                cellInst[base + 6] = uv[3];
-                                cellInst[base + 7] = 1.0;
-                                instIdx++;
-                                if (G.lockDelayActive && instIdx < 250) {
-                                    const luv =
-                                            GL.cellUVTable[
-                                                G.currentPiece.type
-                                            ][2],
-                                        lbase = instIdx * 8;
-                                    cellInst[lbase] =
-                                        (G.currentPiece.x + c) * CELL;
-                                    cellInst[lbase + 1] =
-                                        (G.currentPiece.y + r) * CELL;
-                                    cellInst[lbase + 2] = CELL;
-                                    cellInst[lbase + 3] = luv[0];
-                                    cellInst[lbase + 4] = luv[1];
-                                    cellInst[lbase + 5] = luv[2];
-                                    cellInst[lbase + 6] = luv[3];
-                                    cellInst[lbase + 7] = 1.0;
-                                    instIdx++;
+                                drawGlassCell(
+                                    boardCtx,
+                                    G.currentPiece.x + c,
+                                    G.currentPiece.y + r,
+                                    G.currentPiece.type,
+                                    CELL,
+                                    false,
+                                );
+                                // 6. Lock delay indicator
+                                if (G.lockDelayActive) {
+                                    drawLockIndicator(
+                                        boardCtx,
+                                        G.currentPiece.x + c,
+                                        G.currentPiece.y + r,
+                                        CELL,
+                                    );
                                 }
                             }
                 }
-                if (G.hdAnim && instIdx < 250) {
-                    const elapsed = performance.now() - G.hdAnim.startTime,
+
+                // 7. Draw hard drop animation
+                if (G.hdAnim) {
+                    const elapsed = nowMs - G.hdAnim.startTime,
                         tVal = Math.min(elapsed / G.hdAnim.duration, 1),
                         easedT = tVal * tVal,
                         animY =
@@ -1418,111 +1379,53 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                             G.hdAnim.piece.type,
                             G.hdAnim.piece.rotation,
                         );
-                    for (let r = 0; r < s.length && instIdx < 250; r++)
-                        for (let c = 0; c < s[r].length && instIdx < 250; c++)
+                    for (let r = 0; r < s.length; r++)
+                        for (let c = 0; c < s[r].length; c++)
                             if (s[r][c] && animY + r >= 0) {
-                                const uv =
-                                        GL.cellUVTable[G.hdAnim.piece.type][0],
-                                    base = instIdx * 8;
-                                cellInst[base] = (G.hdAnim.piece.x + c) * CELL;
-                                cellInst[base + 1] = (animY + r) * CELL;
-                                cellInst[base + 2] = CELL;
-                                cellInst[base + 3] = uv[0];
-                                cellInst[base + 4] = uv[1];
-                                cellInst[base + 5] = uv[2];
-                                cellInst[base + 6] = uv[3];
-                                cellInst[base + 7] = 1.0;
-                                instIdx++;
+                                drawGlassCell(
+                                    boardCtx,
+                                    G.hdAnim.piece.x + c,
+                                    animY + r,
+                                    G.hdAnim.piece.type,
+                                    CELL,
+                                    false,
+                                );
                             }
                 }
-                if (instIdx > 0) {
-                    gl.useProgram(GL.cellProg);
-                    gl.uniform2f(GL.cellU_res, BW, BH);
-                    gl.activeTexture(gl.TEXTURE0);
-                    gl.bindTexture(gl.TEXTURE_2D, GL.atlasTex);
-                    gl.uniform1i(GL.cellU_tex, 0);
-                    gl.enable(gl.BLEND);
-                    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-                    gl.bindVertexArray(GL.cellQuadVao);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, GL.cellInstBuf);
-                    gl.bufferSubData(
-                        gl.ARRAY_BUFFER,
-                        0,
-                        cellInst,
-                        0,
-                        instIdx * 8,
-                    );
-                    gl.enableVertexAttribArray(GL.cellA_off);
-                    gl.vertexAttribPointer(
-                        GL.cellA_off,
-                        2,
-                        gl.FLOAT,
-                        false,
-                        32,
-                        0,
-                    );
-                    gl.vertexAttribDivisor(GL.cellA_off, 1);
-                    gl.enableVertexAttribArray(GL.cellA_sz);
-                    gl.vertexAttribPointer(
-                        GL.cellA_sz,
-                        1,
-                        gl.FLOAT,
-                        false,
-                        32,
-                        8,
-                    );
-                    gl.vertexAttribDivisor(GL.cellA_sz, 1);
-                    gl.enableVertexAttribArray(GL.cellA_uv);
-                    gl.vertexAttribPointer(
-                        GL.cellA_uv,
-                        4,
-                        gl.FLOAT,
-                        false,
-                        32,
-                        12,
-                    );
-                    gl.vertexAttribDivisor(GL.cellA_uv, 1);
-                    gl.enableVertexAttribArray(GL.cellA_alpha);
-                    gl.vertexAttribPointer(
-                        GL.cellA_alpha,
-                        1,
-                        gl.FLOAT,
-                        false,
-                        32,
-                        28,
-                    );
-                    gl.vertexAttribDivisor(GL.cellA_alpha, 1);
-                    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instIdx);
-                    gl.vertexAttribDivisor(GL.cellA_off, 0);
-                    gl.vertexAttribDivisor(GL.cellA_sz, 0);
-                    gl.vertexAttribDivisor(GL.cellA_uv, 0);
-                    gl.vertexAttribDivisor(GL.cellA_alpha, 0);
-                    gl.disableVertexAttribArray(GL.cellA_off);
-                    gl.disableVertexAttribArray(GL.cellA_sz);
-                    gl.disableVertexAttribArray(GL.cellA_uv);
-                    gl.disableVertexAttribArray(GL.cellA_alpha);
-                    gl.bindVertexArray(null);
-                    gl.disable(gl.BLEND);
-                }
+
+                // 8. Draw particles
                 if (partCount > 0) {
-                    gl.useProgram(GL.partProg);
-                    gl.uniform2f(GL.partU_res, BW, BH);
-                    gl.enable(gl.BLEND);
-                    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, GL.partBuf);
-                    gl.bufferSubData(
-                        gl.ARRAY_BUFFER,
-                        0,
-                        partArr,
-                        0,
-                        partCount * 7,
-                    );
-                    gl.bindVertexArray(GL.partVao);
-                    gl.drawArrays(gl.POINTS, 0, partCount);
-                    gl.bindVertexArray(null);
-                    gl.disable(gl.BLEND);
+                    boardCtx.save();
+                    boardCtx.globalCompositeOperation = "lighter";
+                    for (let i = 0; i < partCount; i++) {
+                        const ppx = partArr[i * 7],
+                            ppy = partArr[i * 7 + 1],
+                            psz = partArr[i * 7 + 2],
+                            pr = partArr[i * 7 + 3] * 255,
+                            pg = partArr[i * 7 + 4] * 255,
+                            pb = partArr[i * 7 + 5] * 255,
+                            pa = partArr[i * 7 + 6];
+                        if (pa <= 0) continue;
+                        boardCtx.globalAlpha = pa;
+                        const colStr =
+                            "rgb(" +
+                            (pr | 0) +
+                            "," +
+                            (pg | 0) +
+                            "," +
+                            (pb | 0) +
+                            ")";
+                        boardCtx.fillStyle = colStr;
+                        boardCtx.shadowColor = colStr;
+                        boardCtx.shadowBlur = psz;
+                        boardCtx.beginPath();
+                        boardCtx.arc(ppx, ppy, psz, 0, Math.PI * 2);
+                        boardCtx.fill();
+                    }
+                    boardCtx.restore();
                 }
             }
+
             function drawNext() {
                 const ctx = nextCanvas.getContext("2d");
                 if (!ctx) return;
@@ -1611,38 +1514,6 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                     G.score.toLocaleString(getLoc());
                 document.getElementById("levelValue").textContent = G.level;
                 document.getElementById("linesValue").textContent = G.lines;
-            }
-            function updateLeaderboardDOM() {
-                const lb = loadLeaderboard(),
-                    loc = getLoc(),
-                    box = document.getElementById("leaderboardBox");
-                if (lb.length === 0) {
-                    box.innerHTML =
-                        '<p style="font-size:0.6rem;text-align:center;padding:8px 0;color:#444">' +
-                        t("noRecords") +
-                        "</p>";
-                } else {
-                    let html =
-                        "<table><thead><tr><th>" +
-                        t("lbNum") +
-                        "</th><th>" +
-                        t("lbScore") +
-                        '</th><th style="text-align:right">' +
-                        t("lbLevel") +
-                        "</th></tr></thead><tbody>";
-                    for (let i = 0; i < lb.length; i++)
-                        html +=
-                            "<tr" +
-                            (i === G.highlightIdx ? ' class="highlight"' : "") +
-                            "><td>" +
-                            (i + 1) +
-                            "</td><td>" +
-                            lb[i].score.toLocaleString(loc) +
-                            '</td><td style="text-align:right">' +
-                            lb[i].level +
-                            "</td></tr>";
-                    box.innerHTML = html + "</tbody></table>";
-                }
             }
             function updateGameoverLeaderboard() {
                 const lb = loadLeaderboard(),
@@ -1739,8 +1610,6 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 }
             }
             function updateLocalization() {
-                document.getElementById("recordsLabel").textContent =
-                    t("records");
                 document.getElementById("nextLabel").textContent = t("next");
                 document.getElementById("scoreLabel").textContent = t("score");
                 document.getElementById("levelLabel").textContent = t("level");
@@ -1764,7 +1633,6 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 document.getElementById("langBtn").textContent =
                     G.lang === "ru" ? "EN" : "RU";
                 renderTitle();
-                updateLeaderboardDOM();
                 updateUI();
             }
             function clearDropTimer() {
@@ -1895,6 +1763,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 if (!isValid(G.board, np)) {
                     G.currentPiece = np;
                     G.gameOver = true;
+                    sfx.gameOver();
                     if (G.score > 0) {
                         const result = addScoreToLeaderboard(
                             G.score,
@@ -1912,7 +1781,6 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                         );
                     setOverlay("gameover");
                     updateGameoverLeaderboard();
-                    updateLeaderboardDOM();
                     requestRender();
                     return;
                 }
@@ -1924,6 +1792,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
             function lockPieceFn() {
                 if (!G.currentPiece) return false;
                 G.board = placePiece(G.board, G.currentPiece);
+                sfx.land();
                 const cl = getCompletedLines(G.board);
                 if (cl.length > 0) {
                     G.clearingLines = cl;
@@ -1946,11 +1815,13 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                         G.score += clearScore;
                         G.lines += lc;
                         G.level = Math.floor(G.lines / 10);
+                        sfx.clear(lc);
                         if (isBoardEmpty(G.board)) {
                             const bonus = PERFECT_CLEAR_BONUS * (G.level + 1);
                             G.score += bonus;
                             G.totalBonus += bonus;
                             createPerfectClearParticles();
+                            sfx.perfectClear();
                             showBonusPopup(
                                 t("perfectClear") +
                                     bonus.toLocaleString(getLoc()),
@@ -1999,7 +1870,10 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 const moved = { ...G.currentPiece, y: G.currentPiece.y + 1 };
                 if (isValid(G.board, moved)) {
                     G.currentPiece = moved;
-                    if (isManual) G.score += 1;
+                    if (isManual) {
+                        G.score += 1;
+                        sfx.softDrop();
+                    }
                     invalidateGhostCache();
                     requestRender();
                     const og = onGround(G.board, moved);
@@ -2032,6 +1906,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 const moved = { ...G.currentPiece, x: G.currentPiece.x - 1 };
                 if (isValid(G.board, moved)) {
                     handleMoveResult(moved);
+                    sfx.move();
                     requestRender();
                 }
             }
@@ -2046,6 +1921,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 const moved = { ...G.currentPiece, x: G.currentPiece.x + 1 };
                 if (isValid(G.board, moved)) {
                     handleMoveResult(moved);
+                    sfx.move();
                     requestRender();
                 }
             }
@@ -2060,6 +1936,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 const rotated = tryRotate(G.board, G.currentPiece);
                 if (rotated) {
                     handleMoveResult(rotated);
+                    sfx.rotate();
                     requestRender();
                 }
             }
@@ -2078,6 +1955,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
             function hardDrop() {
                 if (G.gameOver || G.paused || G.clearingLines.length > 0)
                     return;
+                sfx.hardDrop();
                 completeHdAnimNow();
                 if (!G.currentPiece) return;
                 clearLockTimer();
@@ -2206,6 +2084,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
             }
             function handleKeyDown(e) {
                 if (!G.started || G.gameOver || e.repeat) return;
+                initAudio();
                 switch (e.key) {
                     case "ArrowLeft":
                     case "a":
@@ -2348,6 +2227,7 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
             boardCanvas.addEventListener("click", () => {
                 if (!G.started || G.gameOver || G.clearingLines.length > 0)
                     return;
+                initAudio();
                 togglePauseFn();
             });
             pauseOverlay.addEventListener("click", () => {
@@ -2393,10 +2273,11 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 partCount = 0;
                 G.highlightIdx = -1;
                 G.lastTime = performance.now();
+                initAudio();
+                sfx.start();
                 spawnPiece();
                 setOverlay(null);
                 updateUI();
-                updateLeaderboardDOM();
                 drawNext();
                 requestRender();
                 scheduleDrop();
@@ -2429,17 +2310,22 @@ precision mediump float; in vec4 v_col; out vec4 fc; void main(){ vec2 c=gl_Poin
                 } catch (e) {}
                 updateLocalization();
             });
-            boardCanvas.addEventListener("webglcontextlost", (e) => {
-                e.preventDefault();
-                if (G.animId) cancelAnimationFrame(G.animId);
-            });
-            boardCanvas.addEventListener("webglcontextrestored", () => {
-                initWebGL();
-                requestRender();
-            });
+            document
+                .getElementById("soundBtn")
+                .addEventListener("click", () => {
+                    G.soundOn = !G.soundOn;
+                    try {
+                        localStorage.setItem(
+                            SOUND_KEY,
+                            G.soundOn ? "on" : "off",
+                        );
+                    } catch (e) {}
+                    updateSoundBtn();
+                    if (G.soundOn) initAudio();
+                });
             updateLocalization();
+            updateSoundBtn();
             setOverlay("start");
-            initWebGL();
             render();
             drawNext();
         </script>
