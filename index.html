@@ -310,31 +310,17 @@
                 color: #c8a8e8;
             }
 
-            .gameover-table {
-                width: 80%;
-                max-width: 280px;
-                max-height: 220px;
-                overflow-y: auto;
-                margin-bottom: 12px;
-                scrollbar-width: thin;
-                scrollbar-color: rgba(200, 168, 232, 0.3) transparent;
-            }
-            .gameover-table table th {
-                font-family: 'Inter', sans-serif;
-                font-size: 0.6rem;
-                font-weight: 700;
-                color: #777;
-                border-color: #333;
-            }
-            .gameover-table table td {
-                font-size: 0.7rem;
-                color: #bbb;
-                border-color: #222;
-            }
-            .gameover-table table tr.highlight td {
-                color: #fff;
-                font-weight: bold;
-            }
+            .lb{width:85%;max-width:320px;max-height:220px;overflow-y:auto;margin-bottom:12px;scrollbar-width:thin;scrollbar-color:rgba(200,168,232,.3) transparent}
+            .lbTitle{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.15em;text-align:center;margin-bottom:8px}
+            .lbEmpty{color:#555;font-size:.6rem;text-align:center;padding:10px 0}
+            .lbRow{display:flex;gap:8px;align-items:center;margin-bottom:3px;font-size:.7rem;padding:2px 6px;border-radius:3px}
+            .lbRow.even{background:rgba(255,255,255,.03)}
+            .lbRow.hi{color:#fff;font-weight:bold}
+            .lbRow:not(.hi){color:#bbb}
+            .lbRow .rank{min-width:18px;text-align:right;font-variant-numeric:tabular-nums}
+            .lbRow .sc{font-variant-numeric:tabular-nums}
+            .lbRow .lv{color:#888;font-size:.6rem}
+            .lbRow .dt{color:#555;font-size:.55rem;margin-left:auto}
             @keyframes pulse {
                 0%,
                 100% {
@@ -360,12 +346,12 @@
                 <canvas id="boardCanvas"></canvas>
                 <div class="bonus-popup" id="bonusPopup"></div>
                 <div class="overlay" id="startOverlay">
+                    <div class="lb" id="startLB"></div>
                     <button class="overlay-btn" id="startBtn"></button>
                 </div>
                 <div class="overlay" id="gameoverOverlay" style="display: none">
                     <h2 id="goTitle" style="color: #f0a8b8"></h2>
-                    <p id="goScore"></p>
-                    <div class="gameover-table" id="goLeaderboard"></div>
+                    <div class="lb" id="goLB"></div>
                     <button class="overlay-btn" id="restartBtn"></button>
                 </div>
                 <div
@@ -811,6 +797,8 @@
                 lbLevel: { ru: "Ур.", en: "Lv." },
                 lbLines: { ru: "Лин.", en: "Ln." },
                 lbDate: { ru: "Дата", en: "Date" },
+                leaderboard: { ru: "Топ-10", en: "Top-10" },
+                noRecords: { ru: "Пока нет рекордов", en: "No records yet" },
                 gamepad: { ru: "Геймпад подключён", en: "Gamepad connected" },
             };
             function t(key) {
@@ -1416,42 +1404,18 @@
                 document.getElementById("levelValue").textContent = G.level;
                 document.getElementById("linesValue").textContent = G.lines;
             }
-            function updateGameoverLeaderboard() {
-                const lb = loadLeaderboard(),
-                    loc = getLoc(),
-                    box = document.getElementById("goLeaderboard");
-                if (lb.length === 0) {
-                    box.innerHTML = "";
-                    return;
-                }
-                let html =
-                    "<table><thead><tr><th>" +
-                    t("lbNum") +
-                    "</th><th>" +
-                    t("lbScore") +
-                    "</th><th>" +
-                    t("lbLevel") +
-                    "</th><th>" +
-                    t("lbLines") +
-                    '</th><th style="text-align:right">' +
-                    t("lbDate") +
-                    "</th></tr></thead><tbody>";
-                for (let i = 0; i < lb.length; i++)
-                    html +=
-                        "<tr" +
-                        (i === G.highlightIdx ? ' class="highlight"' : "") +
-                        "><td>" +
-                        (i + 1) +
-                        "</td><td>" +
-                        lb[i].score.toLocaleString(loc) +
-                        "</td><td>" +
-                        lb[i].level +
-                        "</td><td>" +
-                        lb[i].lines +
-                        '</td><td style="text-align:right">' +
-                        lb[i].date +
-                        "</td></tr>";
-                box.innerHTML = html + "</tbody></table>";
+            function buildLBHTML(lb, hi) {
+                if (lb.length === 0) return '<div class="lbEmpty">' + t('noRecords') + '</div>';
+                const lvLabel = t('lbLevel');
+                return lb.map((e, i) =>
+                    '<div class="lbRow' + (i % 2 === 0 ? ' even' : '') + (i === hi ? ' hi' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="sc">' + e.score.toLocaleString(getLoc()) + '</span><span class="lv">' + lvLabel + e.level + '</span><span class="dt">' + e.date + '</span></div>'
+                ).join('');
+            }
+            function updateStartLB() {
+                document.getElementById('startLB').innerHTML = '<div class="lbTitle">' + t('leaderboard') + '</div>' + buildLBHTML(loadLeaderboard(), -1);
+            }
+            function updateGameoverLB() {
+                document.getElementById('goLB').innerHTML = '<div class="lbTitle">' + t('leaderboard') + '</div>' + buildLBHTML(loadLeaderboard(), G.highlightIdx);
             }
             function setOverlay(type) {
                 G.overlay = type;
@@ -1503,6 +1467,7 @@
                     G.lang === "ru" ? "EN" : "RU";
                 document.title = G.lang === "ru" ? "Тетрис" : "Tetris";
                 renderTitle();
+                updateStartLB();
                 updateUI();
             }
             function clearDropTimer() {
@@ -1642,15 +1607,14 @@
                         );
                         G.highlightIdx = result.highlightIdx;
                     }
-                    document.getElementById("goScore").textContent =
-                        t("scoreLabel") + G.score.toLocaleString(getLoc());
+                    // score shown in right panel
                     if (G.totalBonus > 0)
                         showBonusPopup(
                             t("bonusLabel") +
                                 G.totalBonus.toLocaleString(getLoc()),
                         );
                     setOverlay("gameover");
-                    updateGameoverLeaderboard();
+                    updateGameoverLB();
                     requestRender();
                     return;
                 }
