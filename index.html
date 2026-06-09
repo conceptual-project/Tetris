@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0d0d0d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10,6 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Tetris</title>
         <style>
             * {
@@ -711,9 +712,9 @@
             const LOC = {
                 title: { ru: "ТЕТРИС", en: "TETRIS" },
                 play: { ru: "ИГРАТЬ", en: "PLAY" },
-                restart: { ru: "ЗАНОВО", en: "AGAIN" },
+                restart: { ru: "ЗАНОВО", en: "RESTART" },
                 gameOver: { ru: "КОНЕЦ ИГРЫ", en: "GAME OVER" },
-                pause: { ru: "ПАУЗА", en: "PAUSED" },
+                pause: { ru: "ПАУЗА", en: "PAUSE" },
                 next: { ru: "Следующая", en: "Next" },
                 score: { ru: "Счёт", en: "Score" },
                 level: { ru: "Уровень", en: "Level" },
@@ -724,7 +725,7 @@
                 },
 
                 scoreLabel: { ru: "Счёт: ", en: "Score: " },
-                bonusLabel: { ru: "Бонус за очистку: +", en: "Clear bonus: +" },
+                bonusLabel: { ru: "Бонус за линии: +", en: "Line bonus: +" },
                 perfectClear: {
                     ru: "ИДЕАЛЬНАЯ ОЧИСТКА! +",
                     en: "PERFECT CLEAR! +",
@@ -1477,6 +1478,7 @@
                     t("hintResume");
                 document.getElementById("langBtn").textContent =
                     G.lang === "ru" ? "EN" : "RU";
+                document.title = G.lang === "ru" ? "Тетрис" : "Tetris";
                 renderTitle();
                 updateUI();
             }
@@ -2214,7 +2216,8 @@
             render();
             drawNext();
         </script>
-    <script>
+    
+<script>
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
 </script>
 </body>
