@@ -12,6 +12,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Tetris</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
         <style>
             * {
                 margin: 0;
@@ -21,7 +24,7 @@
             body {
                 background: #0d0d0d;
                 color: #fff;
-                font-family: "Courier New", Courier, monospace;
+                font-family: 'Inter', sans-serif;
                 user-select: none;
                 min-height: 100vh;
                 display: flex;
@@ -39,11 +42,45 @@
             }
             .title-row {
                 display: flex;
-                align-items: flex-end;
+                align-items: center;
                 justify-content: center;
-                gap: 6px;
-                will-change: filter;
-                animation: titleGlow 3s ease-in-out infinite;
+                gap: 5px;
+
+            }
+            .title-cube {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 44px;
+                height: 44px;
+                font-family: 'Inter', sans-serif;
+                font-weight: 900;
+                font-size: 22px;
+                color: #fff;
+                border-radius: 5px;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+                position: relative;
+                user-select: none;
+                outline: 1px solid rgba(255,255,255,0.25);
+                outline-offset: -2px;
+            }
+            .title-cube::before {
+                content: '';
+                position: absolute;
+                top: 2px; left: 2px; right: 2px;
+                height: 36%;
+                background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 100%);
+                border-radius: 3px 3px 0 0;
+                pointer-events: none;
+            }
+            .title-cube::after {
+                content: '';
+                position: absolute;
+                bottom: 2px; left: 2px; right: 2px;
+                height: 33%;
+                background: linear-gradient(0deg, rgba(0,0,0,0.2) 0%, transparent 100%);
+                border-radius: 0 0 3px 3px;
+                pointer-events: none;
             }
             .btn-row {
                 display: flex;
@@ -51,11 +88,11 @@
             }
             .tbtn {
                 flex: 1;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(20, 20, 30, 0.75);
+                border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 6px;
                 color: #888;
-                font-family: inherit;
+                font-family: 'Inter', sans-serif;
                 font-size: 0.6rem;
                 font-weight: bold;
                 letter-spacing: 0.08em;
@@ -74,19 +111,50 @@
                 color: #c8a8e8;
             }
             .tbtn.sound-off {
-                background: rgba(255, 255, 255, 0.05);
-                border-color: rgba(255, 255, 255, 0.1);
+                background: rgba(20, 20, 30, 0.75);
+                border-color: rgba(255, 255, 255, 0.08);
                 color: #666;
             }
-            .title-letter {
-                display: grid;
-                grid-template-columns: repeat(5, 8px);
-                gap: 1px;
+            /* game frame */
+            .game-frame {
+                position: relative;
+                border: 2px solid #555;
+                border-radius: 16px;
+                padding: 16px 20px 20px;
+                background: rgba(255,255,255,0.03);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 32px;
             }
-            .title-letter .px {
-                width: 8px;
-                height: 8px;
-                border-radius: 1.5px;
+            .game-frame::after {
+                content: '';
+                position: absolute;
+                bottom: -2px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 130px;
+                height: 4px;
+                background: #0d0d0d;
+                z-index: 1;
+            }
+            .frame-label {
+                position: absolute;
+                bottom: -10px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #0d0d0d;
+                padding: 0 5px;
+                font-family: 'Inter', sans-serif;
+                font-size: 12px;
+                letter-spacing: 0.5px;
+                color: #555;
+                z-index: 2;
+                white-space: nowrap;
+            }
+            .frame-label .bold {
+                font-weight: 700;
+                color: #777;
             }
             .main-row {
                 display: flex;
@@ -118,11 +186,16 @@
             }
             .board-wrap {
                 position: relative;
+                border-radius: 6px;
+                padding: 4px;
+                background: rgba(20, 20, 30, 0.75);
+                border: 1px solid rgba(255, 255, 255, 0.08);
             }
             .board-wrap canvas {
                 display: block;
                 border-radius: 4px;
                 cursor: pointer;
+                border: none;
             }
             .gp-indicator {
                 position: absolute;
@@ -165,6 +238,8 @@
                 backdrop-filter: blur(6px);
             }
             .overlay h2 {
+                font-family: 'Inter', sans-serif;
+                font-weight: 900;
                 font-size: 1.2rem;
                 margin-bottom: 8px;
             }
@@ -180,14 +255,17 @@
             .overlay-btn {
                 padding: 12px 32px;
                 border: none;
-                font-weight: bold;
+                font-weight: 900;
                 cursor: pointer;
-                border-radius: 8px;
-                background: linear-gradient(135deg, #c8a8e8, #a8c8e8);
-                color: #1a1a2e;
-                font-family: inherit;
+                border-radius: 6px;
+                background: linear-gradient(180deg, #d4f4e0 0%, #b8e8c8 35%, #90d0a8 70%, #70b088 100%);
+                color: #fff;
+                font-family: 'Inter', sans-serif;
                 font-size: 1.1rem;
-                box-shadow: 0 2px 12px rgba(200, 168, 232, 0.3);
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+                outline: 1px solid rgba(255,255,255,0.25);
+                outline-offset: -2px;
+                box-shadow: 0 3px 6px rgba(0,0,0,0.3);
                 transition: transform 0.15s;
             }
             .overlay-btn:hover {
@@ -204,6 +282,9 @@
                 padding: 10px;
                 background: rgba(20, 20, 30, 0.75);
                 border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            .stat-box canvas {
+                border: none;
             }
             .stat-box .label {
                 text-transform: uppercase;
@@ -239,7 +320,9 @@
                 scrollbar-color: rgba(200, 168, 232, 0.3) transparent;
             }
             .gameover-table table th {
+                font-family: 'Inter', sans-serif;
                 font-size: 0.6rem;
+                font-weight: 700;
                 color: #777;
                 border-color: #333;
             }
@@ -261,23 +344,13 @@
                     opacity: 0.4;
                 }
             }
-            @keyframes titleGlow {
-                0%,
-                100% {
-                    filter: drop-shadow(0 0 8px rgba(200, 168, 232, 0.4))
-                        drop-shadow(0 0 20px rgba(200, 168, 232, 0.2));
-                }
-                50% {
-                    filter: drop-shadow(0 0 14px rgba(200, 168, 232, 0.6))
-                        drop-shadow(0 0 30px rgba(200, 168, 232, 0.3));
-                }
-            }
             .pulse-anim {
                 animation: pulse 1s ease-in-out infinite;
             }
         </style>
     </head>
     <body>
+        <div class="game-frame">
         <div class="top-bar">
             <div id="titleRow" class="title-row"></div>
         </div>
@@ -320,7 +393,7 @@
                         id="nextCanvas"
                         width="150"
                         height="90"
-                        style="width: 100%; border-radius: 4px"
+                        style="width: 100%; background: transparent"
                     ></canvas>
                 </div>
                 <div class="stat-box">
@@ -337,6 +410,8 @@
                 </div>
 
             </div>
+        </div>
+        <div class="frame-label">conceptual<span class="bold">project</span></div>
         </div>
         <script>
             const COLS = 10,
@@ -1040,7 +1115,7 @@
                 ctx.lineWidth = 1;
                 roundRect(ctx, px + 1.5, py + 1.5, cs - 3, cs - 3, r - 0.5);
                 ctx.stroke();
-                const shineH = cs * 0.38;
+                const shineH = cs * 0.36;
                 ctx.globalAlpha = 0.45;
                 const shG = ctx.createLinearGradient(
                     px,
@@ -1048,7 +1123,7 @@
                     px,
                     py + shineH,
                 );
-                shG.addColorStop(0, "rgba(255,255,255,0.7)");
+                shG.addColorStop(0, "rgba(255,255,255,0.45)");
                 shG.addColorStop(1, "rgba(255,255,255,0)");
                 ctx.fillStyle = shG;
                 roundRect(ctx, px + 2, py + 2, cs - 4, shineH, [
@@ -1058,43 +1133,23 @@
                     0,
                 ]);
                 ctx.fill();
-                ctx.globalAlpha = 0.6;
-                ctx.fillStyle = "#fff";
-                ctx.beginPath();
-                ctx.ellipse(
-                    px + cs * 0.28,
-                    py + cs * 0.22,
-                    cs * 0.08,
-                    cs * 0.05,
-                    -0.3,
-                    0,
-                    Math.PI * 2,
-                );
-                ctx.fill();
-                ctx.globalAlpha = 0.15;
+                ctx.globalAlpha = 0.3;
                 const sG = ctx.createLinearGradient(
                     px,
-                    py + cs * 0.7,
+                    py + cs * 0.67,
                     px,
                     py + cs,
                 );
                 sG.addColorStop(0, "rgba(0,0,0,0)");
-                sG.addColorStop(1, "rgba(0,0,0,0.5)");
+                sG.addColorStop(1, "rgba(0,0,0,0.2)");
                 ctx.fillStyle = sG;
-                roundRect(ctx, px + 2, py + cs * 0.65, cs - 4, cs * 0.33, [
+                roundRect(ctx, px + 2, py + cs * 0.67, cs - 4, cs * 0.31, [
                     0,
                     0,
                     r - 1,
                     r - 1,
                 ]);
                 ctx.fill();
-                ctx.globalAlpha = 0.08;
-                ctx.shadowColor = co.base;
-                ctx.shadowBlur = 8;
-                ctx.fillStyle = co.base;
-                roundRect(ctx, px, py, cs, cs, r);
-                ctx.fill();
-                ctx.shadowBlur = 0;
                 ctx.globalAlpha = 1;
                 ctx.restore();
             }
@@ -1132,9 +1187,6 @@
                 bgCtx.lineTo(BW, y * CELL);
                 bgCtx.stroke();
             }
-            bgCtx.strokeStyle = "rgba(255,255,255,0.1)";
-            bgCtx.lineWidth = 2;
-            bgCtx.strokeRect(0, 0, BW, BH);
 
             function render() {
                 if (!boardCtx) return;
@@ -1299,11 +1351,7 @@
                 const ps = 18,
                     cw = nextCanvas.width,
                     ch = nextCanvas.height;
-                const bgG = ctx.createLinearGradient(0, 0, 0, ch);
-                bgG.addColorStop(0, "#0e0e18");
-                bgG.addColorStop(1, "#0a0a10");
-                ctx.fillStyle = bgG;
-                ctx.fillRect(0, 0, cw, ch);
+                ctx.clearRect(0, 0, cw, ch);
                 if (!G.nextPiece) return;
                 const s = getShape(G.nextPiece, 0);
                 let minR = s.length,
@@ -1325,43 +1373,42 @@
                         if (s[r][c]) {
                             const cx2 = ox + c * ps,
                                 cy2 = oy + r * ps,
-                                co = COLORS[G.nextPiece];
-                            const grad = ctx.createLinearGradient(
-                                cx2,
-                                cy2,
-                                cx2,
-                                cy2 + ps,
-                            );
+                                co = COLORS[G.nextPiece],
+                                rr = 2;
+                            // Gradient body
+                            ctx.save();
+                            const grad = ctx.createLinearGradient(cx2, cy2, cx2, cy2 + ps);
                             grad.addColorStop(0, co.light);
                             grad.addColorStop(0.35, co.base);
                             grad.addColorStop(0.7, co.mid);
                             grad.addColorStop(1, co.dark);
                             ctx.fillStyle = grad;
-                            roundRect(ctx, cx2 + 0.5, cy2 + 0.5, ps - 1, ps - 1, 2);
+                            roundRect(ctx, cx2 + 0.5, cy2 + 0.5, ps - 1, ps - 1, rr);
                             ctx.fill();
-                            ctx.globalAlpha = 0.4;
-                            const shG = ctx.createLinearGradient(
-                                cx2,
-                                cy2,
-                                cx2,
-                                cy2 + ps * 0.4,
-                            );
-                            shG.addColorStop(0, "rgba(255,255,255,0.6)");
+                            // White inner border
+                            ctx.strokeStyle = "rgba(255,255,255,0.25)";
+                            ctx.lineWidth = 1;
+                            roundRect(ctx, cx2 + 1.5, cy2 + 1.5, ps - 3, ps - 3, rr - 0.5);
+                            ctx.stroke();
+                            // Top shine
+                            const shineH = ps * 0.36;
+                            ctx.globalAlpha = 0.45;
+                            const shG = ctx.createLinearGradient(cx2, cy2, cx2, cy2 + shineH);
+                            shG.addColorStop(0, "rgba(255,255,255,0.45)");
                             shG.addColorStop(1, "rgba(255,255,255,0)");
                             ctx.fillStyle = shG;
-                            roundRect(ctx,
-                                cx2 + 1.5,
-                                cy2 + 1.5,
-                                ps - 3,
-                                ps * 0.4,
-                                1.5,
-                            );
+                            roundRect(ctx, cx2 + 2, cy2 + 2, ps - 4, shineH, [rr - 1, rr - 1, 0, 0]);
                             ctx.fill();
-                            ctx.globalAlpha = 1;
+                            // Bottom shadow
+                            ctx.globalAlpha = 0.3;
+                            const sG = ctx.createLinearGradient(cx2, cy2 + ps * 0.67, cx2, cy2 + ps);
+                            sG.addColorStop(0, "rgba(0,0,0,0)");
+                            sG.addColorStop(1, "rgba(0,0,0,0.2)");
+                            ctx.fillStyle = sG;
+                            roundRect(ctx, cx2 + 2, cy2 + ps * 0.67, ps - 4, ps * 0.31, [0, 0, rr - 1, rr - 1]);
+                            ctx.fill();
+                            ctx.restore();
                         }
-                ctx.strokeStyle = "rgba(255,255,255,0.08)";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(0, 0, cw, ch);
             }
             function updateUI() {
                 document.getElementById("scoreValue").textContent =
@@ -1423,44 +1470,20 @@
                 }, 2000);
             }
             function renderTitle() {
-                const titleStr = t("title");
                 titleRow.innerHTML = "";
+                const titleStr = "TETRIS";
+                const titleColors = [
+                    COLORS.I, COLORS.O, COLORS.T, COLORS.S, COLORS.Z, COLORS.J
+                ];
                 for (let li = 0; li < titleStr.length; li++) {
-                    const char = titleStr[li],
-                        map = PIXEL_MAPS[char],
-                        co = TITLE_PIECE_COLORS[li % TITLE_PIECE_COLORS.length];
-                    if (!map) {
-                        const span = document.createElement("span");
-                        span.style.cssText = "color:#c8a8e8;font-size:2rem";
-                        span.textContent = char;
-                        titleRow.appendChild(span);
-                        continue;
-                    }
-                    const div = document.createElement("div");
-                    div.className = "title-letter";
-                    const flat = map.flat();
-                    for (let ci = 0; ci < flat.length; ci++) {
-                        const px = document.createElement("div");
-                        px.className = "px";
-                        if (flat[ci]) {
-                            px.style.background =
-                                "linear-gradient(180deg, " +
-                                co.light +
-                                " 0%, " +
-                                co.base +
-                                " 35%, " +
-                                co.mid +
-                                " 70%, " +
-                                co.dark +
-                                " 100%)";
-                            px.style.boxShadow =
-                                "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.25)";
-                        } else {
-                            px.style.background = "transparent";
-                        }
-                        div.appendChild(px);
-                    }
-                    titleRow.appendChild(div);
+                    const char = titleStr[li];
+                    const co = titleColors[li % titleColors.length];
+                    const cube = document.createElement("div");
+                    cube.className = "title-cube";
+                    cube.textContent = char;
+                    cube.style.background = "linear-gradient(180deg, " + co.light + " 0%, " + co.base + " 35%, " + co.mid + " 70%, " + co.dark + " 100%)";
+                    cube.style.boxShadow = "0 3px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)";
+                    titleRow.appendChild(cube);
                 }
             }
             function updateLocalization() {
