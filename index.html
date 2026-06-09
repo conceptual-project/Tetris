@@ -271,6 +271,11 @@
             .overlay-btn:hover {
                 transform: scale(1.05);
             }
+            .overlay-btn.small {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+                width: 100%;
+            }
             .right-panel {
                 display: flex;
                 flex-direction: column;
@@ -347,12 +352,10 @@
                 <div class="bonus-popup" id="bonusPopup"></div>
                 <div class="overlay" id="startOverlay">
                     <div class="lb" id="startLB"></div>
-                    <button class="overlay-btn" id="startBtn"></button>
                 </div>
                 <div class="overlay" id="gameoverOverlay" style="display: none">
                     <h2 id="goTitle" style="color: #f0a8b8"></h2>
                     <div class="lb" id="goLB"></div>
-                    <button class="overlay-btn" id="restartBtn"></button>
                 </div>
                 <div
                     class="overlay"
@@ -394,7 +397,7 @@
                     <div class="label" id="linesLabel"></div>
                     <div class="value green" id="linesValue">0</div>
                 </div>
-
+                <button class="overlay-btn small" id="play-btn" style="display:none"></button>
             </div>
         </div>
         <div class="frame-label">conceptual<span class="bold">project</span></div>
@@ -1045,8 +1048,7 @@
                 startOverlay = document.getElementById("startOverlay"),
                 gameoverOverlay = document.getElementById("gameoverOverlay");
             const pauseOverlay = document.getElementById("pauseOverlay"),
-                startBtn = document.getElementById("startBtn"),
-                restartBtn = document.getElementById("restartBtn"),
+                playBtn = document.getElementById("play-btn"),
                 gpIndicator = document.getElementById("gpIndicator");
             boardCanvas.width = BW;
             boardCanvas.height = BH;
@@ -1423,6 +1425,12 @@
                 gameoverOverlay.style.display =
                     type === "gameover" ? "flex" : "none";
                 pauseOverlay.style.display = type === "pause" ? "flex" : "none";
+                if (type === "start" || type === "gameover") {
+                    playBtn.style.display = "block";
+                    playBtn.textContent = t("play");
+                } else {
+                    playBtn.style.display = "none";
+                }
             }
             function showBonusPopup(text) {
                 bonusPopup.textContent = text;
@@ -1456,9 +1464,7 @@
                 document.getElementById("levelLabel").textContent = t("level");
                 document.getElementById("linesLabel").textContent = t("lines");
 
-                document.getElementById("startBtn").textContent = t("play");
-                document.getElementById("restartBtn").textContent =
-                    t("restart");
+                document.getElementById("play-btn").textContent = t("play");
                 document.getElementById("goTitle").textContent = t("gameOver");
                 document.getElementById("pauseTitle").textContent = t("pause");
                 document.getElementById("pauseHint").textContent =
@@ -1981,6 +1987,84 @@
             }
             document.addEventListener("keydown", handleKeyDown);
             document.addEventListener("keyup", handleKeyUp);
+
+            // ═══════════════════════════════════════════
+            // TOUCHSCREEN CONTROLS
+            // ═══════════════════════════════════════════
+            const SWIPE_THRESHOLD = 30;
+            const TAP_MAX_DURATION = 200;
+            const TAP_MAX_DISTANCE = 15;
+            let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+            let touchMoved = false;
+
+            boardCanvas.addEventListener('touchstart', function(e) {
+                if (!G.started || G.gameOver || G.paused) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchStartTime = performance.now();
+                touchMoved = false;
+            }, { passive: false });
+
+            boardCanvas.addEventListener('touchmove', function(e) {
+                if (!G.started || G.gameOver || G.paused) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const dx = touch.clientX - touchStartX;
+                const dy = touch.clientY - touchStartY;
+                const adx = Math.abs(dx);
+                const ady = Math.abs(dy);
+
+                if (adx > SWIPE_THRESHOLD || ady > SWIPE_THRESHOLD) {
+                    touchMoved = true;
+                    if (adx > ady) {
+                        if (dx > SWIPE_THRESHOLD) {
+                            moveRight();
+                            touchStartX = touch.clientX;
+                            touchMoved = false;
+                        } else if (dx < -SWIPE_THRESHOLD) {
+                            moveLeft();
+                            touchStartX = touch.clientX;
+                            touchMoved = false;
+                        }
+                    } else {
+                        if (dy > SWIPE_THRESHOLD) {
+                            moveDown(true);
+                            touchStartY = touch.clientY;
+                            touchMoved = false;
+                        }
+                    }
+                }
+            }, { passive: false });
+
+            boardCanvas.addEventListener('touchend', function(e) {
+                if (!G.started || G.gameOver || G.paused) return;
+                e.preventDefault();
+                const elapsed = performance.now() - touchStartTime;
+
+                if (touchMoved) {
+                    const touch = e.changedTouches[0];
+                    const dx = touch.clientX - touchStartX;
+                    const dy = touch.clientY - touchStartY;
+                    const adx = Math.abs(dx);
+                    const ady = Math.abs(dy);
+
+                    if (ady > SWIPE_THRESHOLD && dy < -SWIPE_THRESHOLD && ady > adx) {
+                        hardDrop();
+                    }
+                } else if (elapsed < TAP_MAX_DURATION) {
+                    const touch = e.changedTouches[0];
+                    const dx = touch.clientX - touchStartX;
+                    const dy = touch.clientY - touchStartY;
+                    if (Math.abs(dx) < TAP_MAX_DISTANCE && Math.abs(dy) < TAP_MAX_DISTANCE) {
+                        rotatePiece();
+                    } else if (Math.abs(dy) > Math.abs(dx) && dy < -SWIPE_THRESHOLD) {
+                        hardDrop();
+                    }
+                }
+                touchMoved = false;
+            }, { passive: false });
             function pollGamepad() {
                 const gamepads = navigator.getGamepads
                     ? navigator.getGamepads()
@@ -2181,8 +2265,7 @@
                 }
                 updatePauseBtn();
             }
-            startBtn.addEventListener("click", startGameFn);
-            restartBtn.addEventListener("click", startGameFn);
+            playBtn.addEventListener("click", startGameFn);
             document.getElementById("langBtn").addEventListener("click", () => {
                 G.lang = G.lang === "ru" ? "en" : "ru";
                 try {
