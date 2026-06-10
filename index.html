@@ -10,7 +10,6 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Tetris</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -161,29 +160,7 @@
                 gap: 24px;
                 align-items: flex-start;
             }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            th {
-                font-size: 0.5rem;
-                color: #555;
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-                border-bottom: 1px solid #333;
-                text-align: left;
-                padding: 2px 4px;
-            }
-            td {
-                font-size: 0.6rem;
-                color: #888;
-                padding: 2px 4px;
-                border-bottom: 1px solid #1a1a1a;
-            }
-            tr.highlight td {
-                color: #fff;
-                font-weight: bold;
-            }
+
             .board-wrap {
                 position: relative;
                 border-radius: 6px;
@@ -316,16 +293,20 @@
             }
 
             .lb{width:85%;max-width:320px;max-height:220px;overflow-y:auto;margin-bottom:12px;scrollbar-width:thin;scrollbar-color:rgba(200,168,232,.3) transparent}
-            .lbTitle{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.15em;text-align:center;margin-bottom:8px}
+            .lbTitle{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;color:#c8a8e8;text-transform:uppercase;letter-spacing:.15em;text-align:center;margin-bottom:8px}
             .lbEmpty{color:#555;font-size:.6rem;text-align:center;padding:10px 0}
-            .lbRow{display:flex;gap:8px;align-items:center;margin-bottom:3px;font-size:.7rem;padding:2px 6px;border-radius:3px}
+            .lbRow{display:grid;grid-template-columns:18px 7px 52px 36px auto;gap:8px;align-items:center;margin-bottom:3px;font-size:.7rem;padding:2px 6px;border-radius:3px}
             .lbRow.even{background:rgba(255,255,255,.03)}
             .lbRow.hi{color:#fff;font-weight:bold}
             .lbRow:not(.hi){color:#bbb}
-            .lbRow .rank{min-width:18px;text-align:right;font-variant-numeric:tabular-nums}
-            .lbRow .sc{font-variant-numeric:tabular-nums}
+            .lbRow .rank{text-align:right;font-variant-numeric:tabular-nums}
+            .lbRow .sc{font-variant-numeric:tabular-nums;text-align:left}
             .lbRow .lv{color:#888;font-size:.6rem}
-            .lbRow .dt{color:#555;font-size:.55rem;margin-left:auto}
+            .lbRow .dt{color:#555;font-size:.55rem;text-align:right}
+            .lbDot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
+            .lbDot.norm{background:rgba(255,255,255,.35)}
+            .lbDot.vic{background:#fce4a8;box-shadow:0 0 6px rgba(252,228,168,.5);cursor:help;position:relative}
+            .lbDot.vic:hover::after{content:attr(data-tip);position:absolute;bottom:140%;left:50%;transform:translateX(-50%);background:rgba(20,20,30,.95);border:1px solid rgba(252,228,168,.3);border-radius:4px;padding:4px 8px;font-size:.6rem;color:#fce4a8;white-space:nowrap;pointer-events:none;z-index:99}
             @keyframes pulse {
                 0%,
                 100% {
@@ -452,86 +433,7 @@
                     dark: "#c89068",
                 },
             };
-            const PIXEL_MAPS = {
-                Т: [
-                    [1, 1, 1, 1, 1],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                ],
-                Е: [
-                    [1, 1, 1, 1, 1],
-                    [1, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 0],
-                    [1, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 1],
-                ],
-                Р: [
-                    [1, 1, 1, 1, 0],
-                    [1, 0, 0, 0, 1],
-                    [1, 1, 1, 1, 0],
-                    [1, 0, 0, 0, 0],
-                    [1, 0, 0, 0, 0],
-                ],
-                И: [
-                    [1, 0, 0, 0, 1],
-                    [1, 0, 0, 1, 1],
-                    [1, 0, 1, 0, 1],
-                    [1, 1, 0, 0, 1],
-                    [1, 0, 0, 0, 1],
-                ],
-                С: [
-                    [0, 1, 1, 1, 1],
-                    [1, 0, 0, 0, 0],
-                    [1, 0, 0, 0, 0],
-                    [1, 0, 0, 0, 0],
-                    [0, 1, 1, 1, 1],
-                ],
-                T: [
-                    [1, 1, 1, 1, 1],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                ],
-                E: [
-                    [1, 1, 1, 1, 1],
-                    [1, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 0],
-                    [1, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 1],
-                ],
-                R: [
-                    [1, 1, 1, 1, 0],
-                    [1, 0, 0, 0, 1],
-                    [1, 1, 1, 1, 0],
-                    [1, 0, 0, 1, 0],
-                    [1, 0, 0, 0, 1],
-                ],
-                I: [
-                    [1, 1, 1, 1, 1],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0],
-                    [1, 1, 1, 1, 1],
-                ],
-                S: [
-                    [0, 1, 1, 1, 1],
-                    [1, 0, 0, 0, 0],
-                    [0, 1, 1, 1, 0],
-                    [0, 0, 0, 0, 1],
-                    [1, 1, 1, 1, 0],
-                ],
-            };
-            const TITLE_PIECE_COLORS = [
-                COLORS.T,
-                COLORS.S,
-                COLORS.I,
-                COLORS.Z,
-                COLORS.L,
-                COLORS.O,
-            ];
+
             const SHAPES = {
                 I: [
                     [
@@ -774,9 +676,7 @@
                 }
             }
             const LOC = {
-                title: { ru: "ТЕТРИС", en: "TETRIS" },
                 play: { ru: "ИГРАТЬ", en: "PLAY" },
-                restart: { ru: "ЗАНОВО", en: "RESTART" },
                 gameOver: { ru: "КОНЕЦ ИГРЫ", en: "GAME OVER" },
                 pause: { ru: "ПАУЗА", en: "PAUSE" },
                 next: { ru: "Следующая", en: "Next" },
@@ -788,19 +688,14 @@
                     en: "Tap to resume",
                 },
 
-                scoreLabel: { ru: "Счёт: ", en: "Score: " },
                 bonusLabel: { ru: "Бонус за линии: +", en: "Line bonus: +" },
                 perfectClear: {
                     ru: "ИДЕАЛЬНАЯ ОЧИСТКА! +",
                     en: "PERFECT CLEAR! +",
                 },
                 tetrisBonus: { ru: "БОНУС! +", en: "BONUS! +" },
-                lbNum: { ru: "№", en: "#" },
-                lbScore: { ru: "Счёт", en: "Score" },
                 lbLevel: { ru: "Ур.", en: "Lv." },
-                lbLines: { ru: "Лин.", en: "Ln." },
-                lbDate: { ru: "Дата", en: "Date" },
-                leaderboard: { ru: "Топ-10", en: "Top-10" },
+                leaderboard: { ru: "Топ-5", en: "Top-5" },
                 noRecords: { ru: "Пока нет рекордов", en: "No records yet" },
                 gamepad: { ru: "Геймпад подключён", en: "Gamepad connected" },
             };
@@ -1013,7 +908,7 @@
                     const data = localStorage.getItem(LB_KEY);
                     if (data) {
                         const lb = JSON.parse(data);
-                        if (lb.length > 10) lb.length = 10;
+                        if (lb.length > 5) lb.length = 5;
                         return lb;
                     }
                 } catch (e) {}
@@ -1024,7 +919,7 @@
                     localStorage.setItem(LB_KEY, JSON.stringify(data));
                 } catch (e) {}
             }
-            function addScoreToLeaderboard(sc, lv, ln) {
+            function addScoreToLeaderboard(sc, lv, ln, hadPerfectClear) {
                 let lb = loadLeaderboard();
                 const entry = {
                     score: sc,
@@ -1032,9 +927,10 @@
                     lines: ln,
                     date: new Date().toLocaleDateString(getLoc()),
                 };
+                if (hadPerfectClear) entry.perfectClear = true;
                 lb.push(entry);
                 lb.sort((a, b) => b.score - a.score);
-                if (lb.length > 10) lb.length = 10;
+                if (lb.length > 5) lb.length = 5;
                 saveLeaderboard(lb);
                 return {
                     leaderboard: lb,
@@ -1409,9 +1305,13 @@
             function buildLBHTML(lb, hi) {
                 if (lb.length === 0) return '<div class="lbEmpty">' + t('noRecords') + '</div>';
                 const lvLabel = t('lbLevel');
-                return lb.map((e, i) =>
-                    '<div class="lbRow' + (i % 2 === 0 ? ' even' : '') + (i === hi ? ' hi' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="sc">' + e.score.toLocaleString(getLoc()) + '</span><span class="lv">' + lvLabel + e.level + '</span><span class="dt">' + e.date + '</span></div>'
-                ).join('');
+                return lb.map((e, i) => {
+                    const rankColor = i === 0 ? '#c8a8e8' : i === 1 ? '#d0d0d0' : i === 2 ? '#d4a574' : '#888';
+                    const isVic = !!e.perfectClear;
+                    const dotCls = isVic ? 'lbDot vic' : 'lbDot norm';
+                    const dotTip = isVic ? ' data-tip="' + t('perfectClear').replace(/\+.*/, '').trim() + '"' : '';
+                    return '<div class="lbRow' + (i % 2 === 0 ? ' even' : '') + (i === hi ? ' hi' : '') + '"><span class="rank" style="color:' + rankColor + '">' + (i + 1) + '</span><span class="' + dotCls + '"' + dotTip + '></span><span class="sc">' + e.score.toLocaleString(getLoc()) + '</span><span class="lv">' + lvLabel + e.level + '</span><span class="dt">' + e.date + '</span></div>';
+                }).join('');
             }
             function updateStartLB() {
                 document.getElementById('startLB').innerHTML = '<div class="lbTitle">' + t('leaderboard') + '</div>' + buildLBHTML(loadLeaderboard(), -1);
@@ -1610,6 +1510,7 @@
                             G.score,
                             G.level,
                             G.lines,
+                            G.totalBonus > 0,
                         );
                         G.highlightIdx = result.highlightIdx;
                     }

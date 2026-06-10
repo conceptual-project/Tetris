@@ -1,7 +1,7 @@
 {
   "name": "Тетрис — Tetris",
   "short_name": "Tetris",
-  "description": "Классический тетрис с modernaыми визуальными эффектами! / Classic Tetris with modern visual effects!",
+  "description": "Классический тетрис с современными визуальными эффектами! / Classic Tetris with modern visual effects!",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
