@@ -295,14 +295,14 @@
             .lb{width:85%;max-width:320px;max-height:220px;overflow-y:auto;margin-bottom:12px;scrollbar-width:thin;scrollbar-color:rgba(200,168,232,.3) transparent}
             .lbTitle{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;color:#c8a8e8;text-transform:uppercase;letter-spacing:.15em;text-align:center;margin-bottom:8px}
             .lbEmpty{color:#555;font-size:.6rem;text-align:center;padding:10px 0}
-            .lbRow{display:grid;grid-template-columns:18px 7px 52px 36px auto;gap:8px;align-items:center;margin-bottom:3px;font-size:.7rem;padding:2px 6px;border-radius:3px}
+            .lbRow{display:flex;gap:8px;align-items:center;margin-bottom:3px;font-size:.7rem;padding:2px 6px;border-radius:3px}
             .lbRow.even{background:rgba(255,255,255,.03)}
             .lbRow.hi{color:#fff;font-weight:bold}
             .lbRow:not(.hi){color:#bbb}
-            .lbRow .rank{text-align:right;font-variant-numeric:tabular-nums}
-            .lbRow .sc{font-variant-numeric:tabular-nums;text-align:left}
+            .lbRow .rank{min-width:18px;text-align:right;font-variant-numeric:tabular-nums}
+            .lbRow .sc{font-variant-numeric:tabular-nums}
             .lbRow .lv{color:#888;font-size:.6rem}
-            .lbRow .dt{color:#555;font-size:.55rem;text-align:right}
+            .lbRow .dt{color:#555;font-size:.55rem;margin-left:auto}
             .lbDot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
             .lbDot.norm{background:rgba(255,255,255,.35)}
             .lbDot.vic{background:#fce4a8;box-shadow:0 0 6px rgba(252,228,168,.5);cursor:help;position:relative}
@@ -695,7 +695,7 @@
                 },
                 tetrisBonus: { ru: "БОНУС! +", en: "BONUS! +" },
                 lbLevel: { ru: "Ур.", en: "Lv." },
-                leaderboard: { ru: "Топ-5", en: "Top-5" },
+                leaderboard: { ru: "Топ-10", en: "Top-10" },
                 noRecords: { ru: "Пока нет рекордов", en: "No records yet" },
                 gamepad: { ru: "Геймпад подключён", en: "Gamepad connected" },
             };
@@ -824,8 +824,11 @@
                 return res;
             }
             function removeLines(b, ls) {
-                for (let i = 0; i < ls.length; i++) {
-                    for (let r = ls[i]; r > 0; r--)
+                // Sort descending so we remove from bottom-up —
+                // this prevents index shift from corrupting upper line references
+                const sorted = [...ls].sort((a, b) => b - a);
+                for (const row of sorted) {
+                    for (let r = row; r > 0; r--)
                         for (let c = 0; c < COLS; c++) b[r][c] = b[r - 1][c];
                     for (let c = 0; c < COLS; c++) b[0][c] = null;
                 }
@@ -908,7 +911,7 @@
                     const data = localStorage.getItem(LB_KEY);
                     if (data) {
                         const lb = JSON.parse(data);
-                        if (lb.length > 5) lb.length = 5;
+                        if (lb.length > 10) lb.length = 10;
                         return lb;
                     }
                 } catch (e) {}
@@ -930,7 +933,7 @@
                 if (hadPerfectClear) entry.perfectClear = true;
                 lb.push(entry);
                 lb.sort((a, b) => b.score - a.score);
-                if (lb.length > 5) lb.length = 5;
+                if (lb.length > 10) lb.length = 10;
                 saveLeaderboard(lb);
                 return {
                     leaderboard: lb,
@@ -1302,6 +1305,7 @@
                 document.getElementById("levelValue").textContent = G.level;
                 document.getElementById("linesValue").textContent = G.lines;
             }
+            function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
             function buildLBHTML(lb, hi) {
                 if (lb.length === 0) return '<div class="lbEmpty">' + t('noRecords') + '</div>';
                 const lvLabel = t('lbLevel');
@@ -1310,7 +1314,7 @@
                     const isVic = !!e.perfectClear;
                     const dotCls = isVic ? 'lbDot vic' : 'lbDot norm';
                     const dotTip = isVic ? ' data-tip="' + t('perfectClear').replace(/\+.*/, '').trim() + '"' : '';
-                    return '<div class="lbRow' + (i % 2 === 0 ? ' even' : '') + (i === hi ? ' hi' : '') + '"><span class="rank" style="color:' + rankColor + '">' + (i + 1) + '</span><span class="' + dotCls + '"' + dotTip + '></span><span class="sc">' + e.score.toLocaleString(getLoc()) + '</span><span class="lv">' + lvLabel + e.level + '</span><span class="dt">' + e.date + '</span></div>';
+                    return '<div class="lbRow' + (i % 2 === 0 ? ' even' : '') + (i === hi ? ' hi' : '') + '"><span class="rank" style="color:' + rankColor + '">' + (i + 1) + '</span><span class="' + dotCls + '"' + dotTip + '></span><span class="sc">' + e.score.toLocaleString(getLoc()) + '</span><span class="lv">' + lvLabel + e.level + '</span><span class="dt">' + esc(e.date) + '</span></div>';
                 }).join('');
             }
             function updateStartLB() {
