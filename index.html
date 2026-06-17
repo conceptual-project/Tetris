@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
     <head>
         <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -358,6 +358,15 @@
                     <button class="tbtn" id="soundBtn"></button>
                 </div>
                 <div class="stat-box">
+                    <div class="label" id="holdLabel"></div>
+                    <canvas
+                        id="holdCanvas"
+                        width="150"
+                        height="90"
+                        style="width: 100%; background: transparent"
+                    ></canvas>
+                </div>
+                <div class="stat-box">
                     <div class="label" id="nextLabel"></div>
                     <canvas
                         id="nextCanvas"
@@ -679,6 +688,7 @@
                 play: { ru: "ИГРАТЬ", en: "PLAY" },
                 gameOver: { ru: "КОНЕЦ ИГРЫ", en: "GAME OVER" },
                 pause: { ru: "ПАУЗА", en: "PAUSE" },
+                hold: { ru: "Удержание", en: "Hold" },
                 next: { ru: "Следующая", en: "Next" },
                 score: { ru: "Счёт", en: "Score" },
                 level: { ru: "Уровень", en: "Level" },
@@ -897,6 +907,8 @@
                 animId: null,
                 needsRender: true,
                 pieceBag: [],
+                holdPiece: null,
+                canHold: true,
                 gpConnected: false,
                 gpPrevState: null,
                 lang: "ru",
@@ -946,6 +958,7 @@
             }
             const boardCanvas = document.getElementById("boardCanvas"),
                 nextCanvas = document.getElementById("nextCanvas"),
+                holdCanvas = document.getElementById("holdCanvas"),
                 titleRow = document.getElementById("titleRow");
             const bonusPopup = document.getElementById("bonusPopup"),
                 startOverlay = document.getElementById("startOverlay"),
@@ -1238,15 +1251,15 @@
                 }
             }
 
-            function drawNext() {
-                const ctx = nextCanvas.getContext("2d");
+            function drawPiecePreview(canvas, pieceType) {
+                const ctx = canvas.getContext("2d");
                 if (!ctx) return;
                 const ps = 18,
-                    cw = nextCanvas.width,
-                    ch = nextCanvas.height;
+                    cw = canvas.width,
+                    ch = canvas.height;
                 ctx.clearRect(0, 0, cw, ch);
-                if (!G.nextPiece) return;
-                const s = getShape(G.nextPiece, 0);
+                if (!pieceType) return;
+                const s = getShape(pieceType, 0);
                 let minR = s.length,
                     maxR = 0,
                     minC = s[0].length,
@@ -1266,7 +1279,7 @@
                         if (s[r][c]) {
                             const cx2 = ox + c * ps,
                                 cy2 = oy + r * ps,
-                                co = COLORS[G.nextPiece],
+                                co = COLORS[pieceType],
                                 rr = 2;
                             // Gradient body
                             ctx.save();
@@ -1302,6 +1315,48 @@
                             ctx.fill();
                             ctx.restore();
                         }
+            }
+            function drawNext() {
+                drawPiecePreview(nextCanvas, G.nextPiece);
+            }
+            function drawHold() {
+                drawPiecePreview(holdCanvas, G.holdPiece);
+            }
+            function holdPieceFn() {
+                if (!G.canHold || !G.currentPiece) return;
+                G.canHold = false;
+                const currentType = G.currentPiece.type;
+                if (G.holdPiece !== null) {
+                    const prevHold = G.holdPiece;
+                    G.holdPiece = currentType;
+                    G.currentPiece = createPiece(prevHold);
+                    if (!isValid(G.board, G.currentPiece)) {
+                        G.currentPiece = { ...G.currentPiece };
+                        G.gameOver = true;
+                        sfx.gameOver();
+                        if (G.score > 0) {
+                            const result = addScoreToLeaderboard(
+                                G.score, G.level, G.lines, G.totalBonus > 0,
+                            );
+                            G.highlightIdx = result.highlightIdx;
+                        }
+                        setOverlay("gameover");
+                        updateGameoverLB();
+                        requestRender();
+                        return;
+                    }
+                } else {
+                    G.holdPiece = currentType;
+                    spawnPiece();
+                }
+                G.lockDelayActive = false;
+                G.lockResets = 0;
+                invalidateGhostCache();
+                clearLockTimer();
+                drawHold();
+                drawNext();
+                updateUI();
+                requestRender();
             }
             function updateUI() {
                 document.getElementById("scoreValue").textContent =
@@ -1367,6 +1422,7 @@
                 }
             }
             function updateLocalization() {
+                document.getElementById("holdLabel").textContent = t("hold");
                 document.getElementById("nextLabel").textContent = t("next");
                 document.getElementById("scoreLabel").textContent = t("score");
                 document.getElementById("levelLabel").textContent = t("level");
@@ -1534,6 +1590,7 @@
                     return;
                 }
                 G.currentPiece = np;
+                G.canHold = true;
                 G.lockDelayActive = false;
                 G.lockResets = 0;
                 invalidateGhostCache();
@@ -1875,6 +1932,17 @@
                         e.preventDefault();
                         hardDrop();
                         break;
+                    case "c":
+                    case "C":
+                        e.preventDefault();
+                        holdPieceFn();
+                        break;
+                    case "p":
+                    case "P":
+                    case "Escape":
+                        e.preventDefault();
+                        togglePauseFn();
+                        break;
 
                 }
             }
@@ -1988,6 +2056,14 @@
                     G.gpPrevState = null;
                     return;
                 }
+                // Fix: skip first frame after gamepad connect to avoid false presses
+                if (G.gpPrevState === null) {
+                    G.gpPrevState = {
+                        buttons: Array.from(gp.buttons).map((b) => b.pressed),
+                        axes: Array.from(gp.axes),
+                    };
+                    return;
+                }
                 const gpJustPressed = (idx) =>
                     (gp.buttons[idx]?.pressed || false) &&
                     !(G.gpPrevState?.buttons[idx] || false);
@@ -2020,8 +2096,9 @@
                 if (!G.started || G.gameOver) {
                     if (gpJustPressed(9) || gpJustPressed(0)) startGameFn();
                 } else {
-                    for (const idx of [0, 1, 2, 3, 12])
+                    for (const idx of [0, 2, 3, 12])
                         if (gpJustPressed(idx)) rotatePiece();
+                    if (gpJustPressed(1)) holdPieceFn();
                     for (const idx of [4, 5])
                         if (gpJustPressed(idx)) hardDrop();
                     if (gpJustPressed(9)) togglePauseFn();
@@ -2089,6 +2166,8 @@
                 G.cachedGhostY = -1;
                 G.totalBonus = 0;
                 G.hdAnim = null;
+                G.holdPiece = null;
+                G.canHold = true;
                 partCount = 0;
                 G.highlightIdx = -1;
                 G.lastTime = performance.now();
@@ -2099,6 +2178,7 @@
                 updateUI();
                 updatePauseBtn();
                 drawNext();
+                drawHold();
                 requestRender();
                 scheduleDrop();
             }
@@ -2145,6 +2225,9 @@
                 G.clearingLines = [];
                 G.clearingLineSet = null;
                 updateUI();
+                spawnPiece();
+                drawNext();
+                drawHold();
             }
 
             function togglePauseFn() {
