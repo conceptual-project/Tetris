@@ -390,7 +390,7 @@
                 <button class="overlay-btn small" id="play-btn" style="display:none"></button>
             </div>
         </div>
-        <div class="frame-label">conceptual<span class="bold">project</span></div>
+        <div class="frame-label" id="cpLabel" style="cursor:pointer">conceptual<span class="bold">project</span></div>
         </div>
         <script>
             const COLS = 10,
@@ -988,77 +988,126 @@
                 ctx.quadraticCurveTo(x, y, x + tl, y);
                 ctx.closePath();
             }
-            function drawGlassCell(ctx, x, y, type, cellSize, isGhost) {
-                const co = COLORS[type],
-                    px = x * cellSize,
-                    py = y * cellSize,
-                    cs = cellSize,
-                    r = 3;
+
+            // ═══════════════════════════════════════════════════
+            // ATLAS RENDERING (CubeFall-style)
+            // ═══════════════════════════════════════════════════
+            const COLOR_ORDER = ["I", "O", "T", "S", "Z", "J", "L"];
+            const COLOR_INDEX = {};
+            COLOR_ORDER.forEach((t, i) => (COLOR_INDEX[t] = i));
+            const NUM_ATLAS_COLORS = COLOR_ORDER.length;
+
+            let glassMode = false;
+            let atlasNormal = null;
+            let atlasGlass = null;
+
+            function drawCubeToAtlas(actx, ci, co, px, py, sz, r, glass) {
+                const g = actx.createLinearGradient(px, py, px, py + sz);
+                if (glass) {
+                    g.addColorStop(0, co.light);
+                    g.addColorStop(0.15, co.base);
+                    g.addColorStop(0.5, co.mid);
+                    g.addColorStop(0.85, co.base);
+                    g.addColorStop(1, co.dark);
+                } else {
+                    g.addColorStop(0, co.light);
+                    g.addColorStop(0.35, co.base);
+                    g.addColorStop(0.7, co.mid);
+                    g.addColorStop(1, co.dark);
+                }
+                actx.fillStyle = g;
+                if (glass) { actx.save(); actx.globalAlpha = 0.82; }
+                roundRect(actx, px + 0.5, py + 0.5, sz - 1, sz - 1, r);
+                actx.fill();
+                if (glass) { actx.restore(); }
+                actx.strokeStyle = glass ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.25)";
+                actx.lineWidth = glass ? 1.5 : 1;
+                roundRect(actx, px + 1.5, py + 1.5, sz - 3, sz - 3, r - 0.5);
+                actx.stroke();
+                const shineH = sz * (glass ? 0.42 : 0.36);
+                actx.save();
+                actx.globalAlpha = glass ? 0.7 : 0.45;
+                const sg = actx.createLinearGradient(px, py, px, py + shineH);
+                sg.addColorStop(0, "rgba(255,255,255," + (glass ? "0.7" : "0.45") + ")");
+                sg.addColorStop(1, "rgba(255,255,255,0)");
+                actx.fillStyle = sg;
+                roundRect(actx, px + 2, py + 2, sz - 4, shineH, [r - 1, r - 1, 0, 0]);
+                actx.fill();
+                actx.restore();
+                if (glass) {
+                    const bandY = py + sz * 0.28,
+                        bandH = sz * 0.12;
+                    actx.save();
+                    actx.globalAlpha = 0.28;
+                    const pg = actx.createLinearGradient(px, bandY, px + sz, bandY + bandH);
+                    pg.addColorStop(0, "rgba(255,100,100,0.6)");
+                    pg.addColorStop(0.17, "rgba(255,200,50,0.6)");
+                    pg.addColorStop(0.33, "rgba(100,255,100,0.6)");
+                    pg.addColorStop(0.5, "rgba(50,200,255,0.6)");
+                    pg.addColorStop(0.67, "rgba(100,100,255,0.6)");
+                    pg.addColorStop(0.83, "rgba(200,50,255,0.6)");
+                    pg.addColorStop(1, "rgba(255,50,150,0.6)");
+                    actx.fillStyle = pg;
+                    roundRect(actx, px + 3, bandY, sz - 6, bandH, [r - 2, r - 2, 0, 0]);
+                    actx.fill();
+                    actx.restore();
+                }
+                actx.save();
+                actx.globalAlpha = glass ? 0.2 : 0.3;
+                const bg = actx.createLinearGradient(px, py + sz * 0.67, px, py + sz);
+                bg.addColorStop(0, "rgba(0,0,0,0)");
+                bg.addColorStop(1, "rgba(0,0,0,0.2)");
+                actx.fillStyle = bg;
+                roundRect(actx, px + 2, py + sz * 0.67, sz - 4, sz * 0.31, [0, 0, r - 1, r - 1]);
+                actx.fill();
+                actx.restore();
+            }
+
+            function buildAtlas() {
+                atlasNormal = document.createElement("canvas");
+                atlasNormal.width = NUM_ATLAS_COLORS * CELL;
+                atlasNormal.height = CELL;
+                const nctx = atlasNormal.getContext("2d");
+                for (let i = 0; i < NUM_ATLAS_COLORS; i++)
+                    drawCubeToAtlas(nctx, i, COLORS[COLOR_ORDER[i]], i * CELL, 0, CELL, 3, false);
+                atlasGlass = document.createElement("canvas");
+                atlasGlass.width = NUM_ATLAS_COLORS * CELL;
+                atlasGlass.height = CELL;
+                const gctx = atlasGlass.getContext("2d");
+                for (let i = 0; i < NUM_ATLAS_COLORS; i++)
+                    drawCubeToAtlas(gctx, i, COLORS[COLOR_ORDER[i]], i * CELL, 0, CELL, 3, true);
+            }
+
+            function drawCube(ctx, px, py, type, sz, isGhost, alpha) {
+                const ci = COLOR_INDEX[type];
+                ctx.save();
+                ctx.globalAlpha = alpha || 1;
                 if (isGhost) {
-                    ctx.save();
-                    ctx.globalAlpha = 0.18;
+                    ctx.globalAlpha = 0.18 * (alpha || 1);
+                    const co = COLORS[type];
                     ctx.fillStyle = co.base;
-                    roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
+                    roundRect(ctx, px + 1, py + 1, sz - 2, sz - 2, 3);
                     ctx.fill();
-                    ctx.globalAlpha = 0.35;
+                    ctx.globalAlpha = 0.35 * (alpha || 1);
                     ctx.strokeStyle = co.light;
                     ctx.lineWidth = 1;
-                    roundRect(ctx, px + 1, py + 1, cs - 2, cs - 2, r);
+                    roundRect(ctx, px + 1, py + 1, sz - 2, sz - 2, 3);
                     ctx.stroke();
                     ctx.restore();
                     return;
                 }
-                ctx.save();
-                const grad = ctx.createLinearGradient(px, py, px, py + cs);
-                grad.addColorStop(0, co.light);
-                grad.addColorStop(0.35, co.base);
-                grad.addColorStop(0.7, co.mid);
-                grad.addColorStop(1, co.dark);
-                ctx.fillStyle = grad;
-                roundRect(ctx, px + 0.5, py + 0.5, cs - 1, cs - 1, r);
-                ctx.fill();
-                ctx.strokeStyle = "rgba(255,255,255,0.25)";
-                ctx.lineWidth = 1;
-                roundRect(ctx, px + 1.5, py + 1.5, cs - 3, cs - 3, r - 0.5);
-                ctx.stroke();
-                const shineH = cs * 0.36;
-                ctx.globalAlpha = 0.45;
-                const shG = ctx.createLinearGradient(
-                    px,
-                    py,
-                    px,
-                    py + shineH,
-                );
-                shG.addColorStop(0, "rgba(255,255,255,0.45)");
-                shG.addColorStop(1, "rgba(255,255,255,0)");
-                ctx.fillStyle = shG;
-                roundRect(ctx, px + 2, py + 2, cs - 4, shineH, [
-                    r - 1,
-                    r - 1,
-                    0,
-                    0,
-                ]);
-                ctx.fill();
-                ctx.globalAlpha = 0.3;
-                const sG = ctx.createLinearGradient(
-                    px,
-                    py + cs * 0.67,
-                    px,
-                    py + cs,
-                );
-                sG.addColorStop(0, "rgba(0,0,0,0)");
-                sG.addColorStop(1, "rgba(0,0,0,0.2)");
-                ctx.fillStyle = sG;
-                roundRect(ctx, px + 2, py + cs * 0.67, cs - 4, cs * 0.31, [
-                    0,
-                    0,
-                    r - 1,
-                    r - 1,
-                ]);
-                ctx.fill();
-                ctx.globalAlpha = 1;
+                const src = glassMode ? atlasGlass : atlasNormal;
+                if (src) ctx.drawImage(src, ci * CELL, 0, CELL, CELL, px, py, sz, sz);
+                if (glassMode && src) {
+                    ctx.globalAlpha = 0.18 * (alpha || 1);
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.arc(px + sz * 0.25, py + sz * 0.22, sz * 0.06, 0, Math.PI * 2);
+                    ctx.fill();
+                }
                 ctx.restore();
             }
+
             function drawLockIndicator(ctx, col, row, cellSize) {
                 const px = col * cellSize,
                     py = row * cellSize;
@@ -1127,23 +1176,25 @@
                                 boardCtx.translate(cx, cy);
                                 boardCtx.scale(scale, scale);
                                 boardCtx.translate(-cx, -cy);
-                                drawGlassCell(
+                                drawCube(
                                     boardCtx,
-                                    c,
-                                    r,
+                                    c * CELL,
+                                    r * CELL,
                                     G.board[r][c],
                                     CELL,
                                     false,
+                                    1,
                                 );
                                 boardCtx.restore();
                             } else {
-                                drawGlassCell(
+                                drawCube(
                                     boardCtx,
-                                    c,
-                                    r,
+                                    c * CELL,
+                                    r * CELL,
                                     G.board[r][c],
                                     CELL,
                                     false,
+                                    1,
                                 );
                             }
                         }
@@ -1160,13 +1211,14 @@
                         for (let r = 0; r < s.length; r++)
                             for (let c = 0; c < s[r].length; c++)
                                 if (s[r][c] && gy + r >= 0)
-                                    drawGlassCell(
+                                    drawCube(
                                         boardCtx,
-                                        G.currentPiece.x + c,
-                                        gy + r,
+                                        (G.currentPiece.x + c) * CELL,
+                                        (gy + r) * CELL,
                                         G.currentPiece.type,
                                         CELL,
                                         true,
+                                        1,
                                     );
                     }
 
@@ -1178,13 +1230,14 @@
                     for (let r = 0; r < s.length; r++)
                         for (let c = 0; c < s[r].length; c++)
                             if (s[r][c] && G.currentPiece.y + r >= 0) {
-                                drawGlassCell(
+                                drawCube(
                                     boardCtx,
-                                    G.currentPiece.x + c,
-                                    G.currentPiece.y + r,
+                                    (G.currentPiece.x + c) * CELL,
+                                    (G.currentPiece.y + r) * CELL,
                                     G.currentPiece.type,
                                     CELL,
                                     false,
+                                    1,
                                 );
                                 // 6. Lock delay indicator
                                 if (G.lockDelayActive) {
@@ -1213,13 +1266,14 @@
                     for (let r = 0; r < s.length; r++)
                         for (let c = 0; c < s[r].length; c++)
                             if (s[r][c] && animY + r >= 0) {
-                                drawGlassCell(
+                                drawCube(
                                     boardCtx,
-                                    G.hdAnim.piece.x + c,
-                                    animY + r,
+                                    (G.hdAnim.piece.x + c) * CELL,
+                                    (animY + r) * CELL,
                                     G.hdAnim.piece.type,
                                     CELL,
                                     false,
+                                    1,
                                 );
                             }
                 }
@@ -1278,42 +1332,18 @@
                     for (let c = 0; c < s[r].length; c++)
                         if (s[r][c]) {
                             const cx2 = ox + c * ps,
-                                cy2 = oy + r * ps,
-                                co = COLORS[pieceType],
-                                rr = 2;
-                            // Gradient body
-                            ctx.save();
-                            const grad = ctx.createLinearGradient(cx2, cy2, cx2, cy2 + ps);
-                            grad.addColorStop(0, co.light);
-                            grad.addColorStop(0.35, co.base);
-                            grad.addColorStop(0.7, co.mid);
-                            grad.addColorStop(1, co.dark);
-                            ctx.fillStyle = grad;
-                            roundRect(ctx, cx2 + 0.5, cy2 + 0.5, ps - 1, ps - 1, rr);
-                            ctx.fill();
-                            // White inner border
-                            ctx.strokeStyle = "rgba(255,255,255,0.25)";
-                            ctx.lineWidth = 1;
-                            roundRect(ctx, cx2 + 1.5, cy2 + 1.5, ps - 3, ps - 3, rr - 0.5);
-                            ctx.stroke();
-                            // Top shine
-                            const shineH = ps * 0.36;
-                            ctx.globalAlpha = 0.45;
-                            const shG = ctx.createLinearGradient(cx2, cy2, cx2, cy2 + shineH);
-                            shG.addColorStop(0, "rgba(255,255,255,0.45)");
-                            shG.addColorStop(1, "rgba(255,255,255,0)");
-                            ctx.fillStyle = shG;
-                            roundRect(ctx, cx2 + 2, cy2 + 2, ps - 4, shineH, [rr - 1, rr - 1, 0, 0]);
-                            ctx.fill();
-                            // Bottom shadow
-                            ctx.globalAlpha = 0.3;
-                            const sG = ctx.createLinearGradient(cx2, cy2 + ps * 0.67, cx2, cy2 + ps);
-                            sG.addColorStop(0, "rgba(0,0,0,0)");
-                            sG.addColorStop(1, "rgba(0,0,0,0.2)");
-                            ctx.fillStyle = sG;
-                            roundRect(ctx, cx2 + 2, cy2 + ps * 0.67, ps - 4, ps * 0.31, [0, 0, rr - 1, rr - 1]);
-                            ctx.fill();
-                            ctx.restore();
+                                cy2 = oy + r * ps;
+                            const ci = COLOR_INDEX[pieceType];
+                            const src = glassMode ? atlasGlass : atlasNormal;
+                            if (src) ctx.drawImage(src, ci * CELL, 0, CELL, CELL, cx2, cy2, ps, ps);
+                            if (glassMode && src) {
+                                ctx.globalAlpha = 0.18;
+                                ctx.fillStyle = "#fff";
+                                ctx.beginPath();
+                                ctx.arc(cx2 + ps * 0.25, cy2 + ps * 0.22, ps * 0.06, 0, Math.PI * 2);
+                                ctx.fill();
+                                ctx.globalAlpha = 1;
+                            }
                         }
             }
             function drawNext() {
@@ -2279,6 +2309,14 @@
                 updateSoundBtn();
                 if (G.soundOn) initAudio();
             });
+            document.getElementById("cpLabel").addEventListener("click", function () {
+                glassMode = !glassMode;
+                this.querySelector(".bold").style.color = glassMode ? "#c8a8e8" : "#777";
+                drawNext();
+                drawHold();
+                requestRender();
+            });
+            buildAtlas();
             updateLocalization();
             updateSoundBtn();
             updatePauseBtn();
