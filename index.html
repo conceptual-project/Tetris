@@ -1348,15 +1348,18 @@
                 } else {
                     G.holdPiece = currentType;
                     spawnPiece();
+                    G.canHold = false; // spawnPiece resets canHold=true, but hold was just used
                 }
                 G.lockDelayActive = false;
                 G.lockResets = 0;
                 invalidateGhostCache();
                 clearLockTimer();
+                clearDropTimer();
                 drawHold();
                 drawNext();
                 updateUI();
                 requestRender();
+                if (!G.gameOver) scheduleDrop();
             }
             function updateUI() {
                 document.getElementById("scoreValue").textContent =
@@ -1887,6 +1890,14 @@
                 }
             }
             function handleKeyDown(e) {
+                // Allow P/Escape even when paused (to unpause)
+                if (e.key === "p" || e.key === "P" || e.key === "Escape") {
+                    if (G.started && !G.gameOver) {
+                        e.preventDefault();
+                        togglePauseFn();
+                    }
+                    return;
+                }
                 if (!G.started || G.gameOver || G.paused || e.repeat) return;
                 initAudio();
                 switch (e.key) {
@@ -1936,12 +1947,6 @@
                     case "C":
                         e.preventDefault();
                         holdPieceFn();
-                        break;
-                    case "p":
-                    case "P":
-                    case "Escape":
-                        e.preventDefault();
-                        togglePauseFn();
                         break;
 
                 }
@@ -2237,6 +2242,8 @@
                     clearDropTimer();
                     clearLockTimer();
                     completeClearNow();
+                    // If completeClearNow triggered game over via spawnPiece, don't show pause overlay
+                    if (G.gameOver) return;
                     keyState.left.active =
                         keyState.right.active =
                         keyState.down.active =
@@ -2251,6 +2258,7 @@
                     } else if (!G.currentPiece) {
                         spawnPiece();
                         drawNext();
+                        drawHold();
                         scheduleDrop();
                     }
                     requestRender();
